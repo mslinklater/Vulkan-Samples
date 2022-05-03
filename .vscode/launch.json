@@ -1,0 +1,493 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Compute N-Body simulation",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "compute_nbody"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Dynamic uniform buffers",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "dynamic_uniform_buffers"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "HDR",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hdr"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Hello triangle",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hello_triangle"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Using HLSL shaders in Vulkan with glslang",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hlsl_shaders"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "HPP dynamic uniform buffers",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hpp_dynamic_uniform_buffers"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "HPP HDR",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hpp_hdr"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Hello Triangle HPP",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hpp_hello_triangle"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "HPP Instancing",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hpp_instancing"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "HPP texture loading and mapping",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "hpp_texture_loading"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Instancing",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "instancing"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Separating image and sampler",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "separate_image_sampler"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Terrain tessellation",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "terrain_tessellation"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Texture loading and mapping",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "texture_loading"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Texture mipmap generation",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "texture_mipmap_generation"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Buffer device address",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "buffer_device_address"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Conservative_rasterization",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "conservative_rasterization"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "VK_EXT_Debug_Utils",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "debug_utils"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Descriptor indexing",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "descriptor_indexing"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Dynamic Rendering",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "dynamic_rendering"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Fragment shading rate",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "fragment_shading_rate"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Dynamic fragment shading rate",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "fragment_shading_rate_dynamic"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "OpenGL Interoperability",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "open_gl_interop"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Push descriptors",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "push_descriptors"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        }
+        {
+            "name": "Ray queries",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "ray_queries"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Ray tracing reflection",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "ray_tracing_reflection"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Ray tracing basic",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "raytracing_basic"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Ray tracing extended",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "raytracing_extended"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Ray tracing extended",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "raytracing_extended"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Compute N-Body simulation using VK_KHR_synchronization2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "synchronization_2"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Timeline semaphore",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "timeline_semaphore"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "16-bit arithmetic",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "16bit_arithmetic"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "16-bit Storage InputOutput",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "16bit_storage_input_output"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "AFBC",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "afbc"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Async compute",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "async_compute"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Command buffer usage",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "command_buffer_usage"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Constant Data",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "constant_data"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Descriptor Management",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "descriptor_management"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Layout Transitions",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "layout_transitions"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "MSAA",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "msaa"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Multi-Draw Indirect",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "multi_draw_indirect"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "RP Multithreading",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "multithreading_render_passes"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Pipeline Barriers",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "pipeline_barriers"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Pipeline Management",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "pipeline_cache"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Render Passes",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "render_passes"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Specialization Constants",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "specialization_constants"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Subpasses",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "subpasses"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Surface Rotation",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "surface_rotation"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Swapchain Images",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "swapchain_images"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Basis Universal texture compression",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "texture_compression_basisu"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Texture compression comparison",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "texture_compression_comparison"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Wait Idle",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "wait_idle"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Using Vulkan profiles",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "args": ["sample", "profiles"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
