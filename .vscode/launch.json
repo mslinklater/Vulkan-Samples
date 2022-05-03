@@ -8,34 +8,58 @@
             "name": "Compute N-Body simulation",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "program": "${workspaceFolder}/build/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "compute_nbody"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "Dynamic uniform buffers",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "program": "${workspaceFolder}/build/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "dynamic_uniform_buffers"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "HDR",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "program": "${workspaceFolder}/build/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hdr"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "Hello triangle",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "program": "${workspaceFolder}/build/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hello_triangle"],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}",
@@ -52,10 +76,18 @@
             "name": "Using HLSL shaders in Vulkan with glslang",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
+            "program": "${workspaceFolder}/build/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hlsl_shaders"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "HPP dynamic uniform buffers",
@@ -64,7 +96,15 @@
             "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hpp_dynamic_uniform_buffers"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "HPP HDR",
@@ -73,7 +113,15 @@
             "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hpp_hdr"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "Hello Triangle HPP",
@@ -82,7 +130,15 @@
             "program": "${workspaceFolder}/build/linux/app/bin/Debug/x86_64/vulkan_samples",
             "args": ["sample", "hpp_hello_triangle"],
             "environment": [{ "name": "config", "value": "Debug" }],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         },
         {
             "name": "HPP Instancing",
@@ -227,7 +283,7 @@
             "args": ["sample", "push_descriptors"],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}"
-        }
+        },
         {
             "name": "Ray queries",
             "type": "cppdbg",
