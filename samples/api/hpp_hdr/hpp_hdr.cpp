@@ -28,38 +28,40 @@ HPPHDR::HPPHDR()
 
 HPPHDR::~HPPHDR()
 {
-	if (device)
+	if (get_device() && get_device()->get_handle())
 	{
-		get_device().get_handle().destroyPipeline(pipelines.skybox);
-		get_device().get_handle().destroyPipeline(pipelines.reflect);
-		get_device().get_handle().destroyPipeline(pipelines.composition);
-		get_device().get_handle().destroyPipeline(pipelines.bloom[0]);
-		get_device().get_handle().destroyPipeline(pipelines.bloom[1]);
+		vk::Device device = get_device()->get_handle();
 
-		get_device().get_handle().destroyPipelineLayout(pipeline_layouts.models);
-		get_device().get_handle().destroyPipelineLayout(pipeline_layouts.composition);
-		get_device().get_handle().destroyPipelineLayout(pipeline_layouts.bloom_filter);
+		device.destroyPipeline(pipelines.skybox);
+		device.destroyPipeline(pipelines.reflect);
+		device.destroyPipeline(pipelines.composition);
+		device.destroyPipeline(pipelines.bloom[0]);
+		device.destroyPipeline(pipelines.bloom[1]);
 
-		get_device().get_handle().destroyDescriptorSetLayout(descriptor_set_layouts.models);
-		get_device().get_handle().destroyDescriptorSetLayout(descriptor_set_layouts.composition);
-		get_device().get_handle().destroyDescriptorSetLayout(descriptor_set_layouts.bloom_filter);
+		device.destroyPipelineLayout(pipeline_layouts.models);
+		device.destroyPipelineLayout(pipeline_layouts.composition);
+		device.destroyPipelineLayout(pipeline_layouts.bloom_filter);
 
-		get_device().get_handle().destroyRenderPass(offscreen.render_pass);
-		get_device().get_handle().destroyRenderPass(filter_pass.render_pass);
+		device.destroyDescriptorSetLayout(descriptor_set_layouts.models);
+		device.destroyDescriptorSetLayout(descriptor_set_layouts.composition);
+		device.destroyDescriptorSetLayout(descriptor_set_layouts.bloom_filter);
 
-		get_device().get_handle().destroyFramebuffer(offscreen.framebuffer);
-		get_device().get_handle().destroyFramebuffer(filter_pass.framebuffer);
+		device.destroyRenderPass(offscreen.render_pass);
+		device.destroyRenderPass(filter_pass.render_pass);
 
-		get_device().get_handle().destroySampler(offscreen.sampler);
-		get_device().get_handle().destroySampler(filter_pass.sampler);
+		device.destroyFramebuffer(offscreen.framebuffer);
+		device.destroyFramebuffer(filter_pass.framebuffer);
 
-		offscreen.depth.destroy(get_device().get_handle());
-		offscreen.color[0].destroy(get_device().get_handle());
-		offscreen.color[1].destroy(get_device().get_handle());
+		device.destroySampler(offscreen.sampler);
+		device.destroySampler(filter_pass.sampler);
 
-		filter_pass.color[0].destroy(get_device().get_handle());
+		offscreen.depth.destroy(device);
+		offscreen.color[0].destroy(device);
+		offscreen.color[1].destroy(device);
 
-		get_device().get_handle().destroySampler(textures.envmap.sampler);
+		filter_pass.color[0].destroy(device);
+
+		device.destroySampler(textures.envmap.sampler);
 	}
 }
 
@@ -222,16 +224,16 @@ HPPHDR::FrameBufferAttachment HPPHDR::create_attachment(vk::Format format, vk::I
 	image_create_info.samples     = vk::SampleCountFlagBits::e1;
 	image_create_info.tiling      = vk::ImageTiling::eOptimal;
 	image_create_info.usage       = usage | vk::ImageUsageFlagBits::eSampled;
-	vk::Image image               = get_device().get_handle().createImage(image_create_info);
+	vk::Image image               = get_device()->get_handle().createImage(image_create_info);
 
-	vk::MemoryRequirements memory_requirements = get_device().get_handle().getImageMemoryRequirements(image);
+	vk::MemoryRequirements memory_requirements = get_device()->get_handle().getImageMemoryRequirements(image);
 	vk::MemoryAllocateInfo memory_allocate_info(memory_requirements.size,
-	                                            get_device().get_gpu().get_memory_type(memory_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal));
-	vk::DeviceMemory       mem = get_device().get_handle().allocateMemory(memory_allocate_info);
-	get_device().get_handle().bindImageMemory(image, mem, 0);
+	                                            get_device()->get_gpu().get_memory_type(memory_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal));
+	vk::DeviceMemory       mem = get_device()->get_handle().allocateMemory(memory_allocate_info);
+	get_device()->get_handle().bindImageMemory(image, mem, 0);
 
 	vk::ImageViewCreateInfo image_view_create_info({}, image, vk::ImageViewType::e2D, format, {}, {aspect_mask, 0, 1, 0, 1});
-	vk::ImageView           view = get_device().get_handle().createImageView(image_view_create_info);
+	vk::ImageView           view = get_device()->get_handle().createImageView(image_view_create_info);
 
 	return FrameBufferAttachment(image, mem, view, format);
 }
@@ -239,6 +241,28 @@ HPPHDR::FrameBufferAttachment HPPHDR::create_attachment(vk::Format format, vk::I
 // Prepare a new framebuffer and attachments for offscreen rendering (G-Buffer)
 void HPPHDR::prepare_offscreen_buffer()
 {
+	// We need to select a format that supports the color attachment blending flag, so we iterate over multiple formats to find one that supports this flag
+	vk::Format color_format{vk::Format::eUndefined};
+
+	const std::vector<vk::Format> float_format_priority_list = {
+	    vk::Format::eR32G32B32A32Sfloat,
+	    vk::Format::eR16G16B16A16Sfloat};
+
+	for (auto &format : float_format_priority_list)
+	{
+		const vk::FormatProperties properties = get_device()->get_gpu().get_handle().getFormatProperties(format);
+		if (properties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eColorAttachmentBlend)
+		{
+			color_format = format;
+			break;
+		}
+	}
+
+	if (color_format == vk::Format::eUndefined)
+	{
+		throw std::runtime_error("No suitable float format could be determined");
+	}
+
 	{
 		offscreen.extent = extent;
 
@@ -246,8 +270,8 @@ void HPPHDR::prepare_offscreen_buffer()
 
 		// We are using two 128-Bit RGBA floating point color buffers for this sample
 		// In a performance or bandwith-limited scenario you should consider using a format with lower precision
-		offscreen.color[0] = create_attachment(vk::Format::eR32G32B32A32Sfloat, vk::ImageUsageFlagBits::eColorAttachment);
-		offscreen.color[1] = create_attachment(vk::Format::eR32G32B32A32Sfloat, vk::ImageUsageFlagBits::eColorAttachment);
+		offscreen.color[0] = create_attachment(color_format, vk::ImageUsageFlagBits::eColorAttachment);
+		offscreen.color[1] = create_attachment(color_format, vk::ImageUsageFlagBits::eColorAttachment);
 		// Depth attachment
 		offscreen.depth = create_attachment(depth_format, vk::ImageUsageFlagBits::eDepthStencilAttachment);
 
@@ -308,12 +332,12 @@ void HPPHDR::prepare_offscreen_buffer()
 
 		vk::RenderPassCreateInfo render_pass_create_info({}, attachment_descriptions, subpass, dependencies);
 
-		offscreen.render_pass = get_device().get_handle().createRenderPass(render_pass_create_info);
+		offscreen.render_pass = get_device()->get_handle().createRenderPass(render_pass_create_info);
 
 		std::array<vk::ImageView, 3> attachments{offscreen.color[0].view, offscreen.color[1].view, offscreen.depth.view};
 
 		vk::FramebufferCreateInfo framebuffer_create_info({}, offscreen.render_pass, attachments, offscreen.extent.width, offscreen.extent.height, 1);
-		offscreen.framebuffer = get_device().get_handle().createFramebuffer(framebuffer_create_info);
+		offscreen.framebuffer = get_device()->get_handle().createFramebuffer(framebuffer_create_info);
 
 		// Create sampler to sample from the color attachments
 		vk::SamplerCreateInfo sampler_create_info;
@@ -328,7 +352,7 @@ void HPPHDR::prepare_offscreen_buffer()
 		sampler_create_info.minLod        = 0.0f;
 		sampler_create_info.maxLod        = 1.0f;
 		sampler_create_info.borderColor   = vk::BorderColor::eFloatOpaqueWhite;
-		offscreen.sampler                 = get_device().get_handle().createSampler(sampler_create_info);
+		offscreen.sampler                 = get_device()->get_handle().createSampler(sampler_create_info);
 	}
 
 	// Bloom separable filter pass
@@ -337,8 +361,8 @@ void HPPHDR::prepare_offscreen_buffer()
 
 		// Color attachments
 
-		// Two floating point color buffers
-		filter_pass.color[0] = create_attachment(vk::Format::eR32G32B32A32Sfloat, vk::ImageUsageFlagBits::eColorAttachment);
+		// Floating point color attachment
+		filter_pass.color[0] = create_attachment(color_format, vk::ImageUsageFlagBits::eColorAttachment);
 
 		// Set up separate renderpass with references to the colorand depth attachments
 		vk::AttachmentDescription attachment_description;
@@ -378,11 +402,11 @@ void HPPHDR::prepare_offscreen_buffer()
 
 		vk::RenderPassCreateInfo render_pass_create_info({}, attachment_description, subpass, dependencies);
 
-		filter_pass.render_pass = get_device().get_handle().createRenderPass(render_pass_create_info);
+		filter_pass.render_pass = get_device()->get_handle().createRenderPass(render_pass_create_info);
 
 		vk::FramebufferCreateInfo framebuffer_create_info(
 		    {}, filter_pass.render_pass, filter_pass.color[0].view, filter_pass.extent.width, filter_pass.extent.height, 1);
-		filter_pass.framebuffer = get_device().get_handle().createFramebuffer(framebuffer_create_info);
+		filter_pass.framebuffer = get_device()->get_handle().createFramebuffer(framebuffer_create_info);
 
 		// Create sampler to sample from the color attachments
 		vk::SamplerCreateInfo sampler_create_info;
@@ -397,7 +421,7 @@ void HPPHDR::prepare_offscreen_buffer()
 		sampler_create_info.minLod        = 0.0f;
 		sampler_create_info.maxLod        = 1.0f;
 		sampler_create_info.borderColor   = vk::BorderColor::eFloatOpaqueWhite;
-		filter_pass.sampler               = get_device().get_handle().createSampler(sampler_create_info);
+		filter_pass.sampler               = get_device()->get_handle().createSampler(sampler_create_info);
 	}
 }
 
@@ -426,7 +450,7 @@ void HPPHDR::load_assets()
 	models.transforms.push_back(torus_matrix);
 
 	// Load HDR cube map
-	textures.envmap = load_texture_cubemap("textures/uffizi_rgba16f_cube.ktx");
+	textures.envmap = load_texture_cubemap("textures/uffizi_rgba16f_cube.ktx", vkb::sg::Image::Color);
 }
 
 void HPPHDR::setup_descriptor_pool()
@@ -434,7 +458,7 @@ void HPPHDR::setup_descriptor_pool()
 	uint32_t                              num_descriptor_sets = 4;
 	std::array<vk::DescriptorPoolSize, 2> pool_sizes          = {{{vk::DescriptorType::eUniformBuffer, 4}, {vk::DescriptorType::eCombinedImageSampler, 6}}};
 	vk::DescriptorPoolCreateInfo          descriptor_pool_create_info({}, num_descriptor_sets, pool_sizes);
-	descriptor_pool = get_device().get_handle().createDescriptorPool(descriptor_pool_create_info);
+	descriptor_pool = get_device()->get_handle().createDescriptorPool(descriptor_pool_create_info);
 }
 
 void HPPHDR::setup_descriptor_set_layout()
@@ -446,7 +470,7 @@ void HPPHDR::setup_descriptor_set_layout()
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout_create_info({}, set_layout_bindings);
 
-	descriptor_set_layouts.models = get_device().get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
+	descriptor_set_layouts.models = get_device()->get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
 
 #if defined(ANDROID)
 	vk::PipelineLayoutCreateInfo pipeline_layout_create_info({}, 1, &descriptor_set_layouts.models);
@@ -454,7 +478,7 @@ void HPPHDR::setup_descriptor_set_layout()
 	vk::PipelineLayoutCreateInfo  pipeline_layout_create_info({}, descriptor_set_layouts.models);
 #endif
 
-	pipeline_layouts.models = get_device().get_handle().createPipelineLayout(pipeline_layout_create_info);
+	pipeline_layouts.models = get_device()->get_handle().createPipelineLayout(pipeline_layout_create_info);
 
 	// Bloom filter
 	std::array<vk::DescriptorSetLayoutBinding, 2> bloom_set_layout_bindings = {
@@ -462,19 +486,19 @@ void HPPHDR::setup_descriptor_set_layout()
 	     {1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment}}};
 
 	descriptor_layout_create_info.setBindings(bloom_set_layout_bindings);
-	descriptor_set_layouts.bloom_filter = get_device().get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
+	descriptor_set_layouts.bloom_filter = get_device()->get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
 
 	pipeline_layout_create_info.setSetLayouts(descriptor_set_layouts.bloom_filter);
-	pipeline_layouts.bloom_filter = get_device().get_handle().createPipelineLayout(pipeline_layout_create_info);
+	pipeline_layouts.bloom_filter = get_device()->get_handle().createPipelineLayout(pipeline_layout_create_info);
 
 	// G-Buffer composition
 	std::array<vk::DescriptorSetLayoutBinding, 2> &g_buffer_composition_set_layout_bindings = bloom_set_layout_bindings;
 
 	descriptor_layout_create_info.setBindings(g_buffer_composition_set_layout_bindings);
-	descriptor_set_layouts.composition = get_device().get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
+	descriptor_set_layouts.composition = get_device()->get_handle().createDescriptorSetLayout(descriptor_layout_create_info);
 
 	pipeline_layout_create_info.setSetLayouts(descriptor_set_layouts.composition);
-	pipeline_layouts.composition = get_device().get_handle().createPipelineLayout(pipeline_layout_create_info);
+	pipeline_layouts.composition = get_device()->get_handle().createPipelineLayout(pipeline_layout_create_info);
 }
 
 void HPPHDR::setup_descriptor_sets()
@@ -486,7 +510,7 @@ void HPPHDR::setup_descriptor_sets()
 #endif
 
 	// 3D object descriptor set
-	descriptor_sets.object = get_device().get_handle().allocateDescriptorSets(alloc_info).front();
+	descriptor_sets.object = get_device()->get_handle().allocateDescriptorSets(alloc_info).front();
 
 	vk::DescriptorBufferInfo matrix_buffer_descriptor(uniform_buffers.matrices->get_handle(), 0, VK_WHOLE_SIZE);
 	vk::DescriptorImageInfo  environment_image_descriptor(
@@ -498,19 +522,19 @@ void HPPHDR::setup_descriptor_sets()
 	    {{descriptor_sets.object, 0, 0, vk::DescriptorType::eUniformBuffer, {}, matrix_buffer_descriptor},
 	     {descriptor_sets.object, 1, 0, vk::DescriptorType::eCombinedImageSampler, environment_image_descriptor},
 	     {descriptor_sets.object, 2, 0, vk::DescriptorType::eUniformBuffer, {}, params_buffer_descriptor}}};
-	get_device().get_handle().updateDescriptorSets(write_descriptor_sets, {});
+	get_device()->get_handle().updateDescriptorSets(write_descriptor_sets, {});
 
 	// Sky box descriptor set
-	descriptor_sets.skybox = get_device().get_handle().allocateDescriptorSets(alloc_info).front();
+	descriptor_sets.skybox = get_device()->get_handle().allocateDescriptorSets(alloc_info).front();
 
 	write_descriptor_sets[0].dstSet = descriptor_sets.skybox;
 	write_descriptor_sets[1].dstSet = descriptor_sets.skybox;
 	write_descriptor_sets[2].dstSet = descriptor_sets.skybox;
-	get_device().get_handle().updateDescriptorSets(write_descriptor_sets, {});
+	get_device()->get_handle().updateDescriptorSets(write_descriptor_sets, {});
 
 	// Bloom filter
 	alloc_info.setSetLayouts(descriptor_set_layouts.bloom_filter);
-	descriptor_sets.bloom_filter = get_device().get_handle().allocateDescriptorSets(alloc_info).front();
+	descriptor_sets.bloom_filter = get_device()->get_handle().allocateDescriptorSets(alloc_info).front();
 
 	std::array<vk::DescriptorImageInfo, 2> color_descriptors = {{{offscreen.sampler, offscreen.color[0].view, vk::ImageLayout::eShaderReadOnlyOptimal},
 	                                                             {offscreen.sampler, offscreen.color[1].view, vk::ImageLayout::eShaderReadOnlyOptimal}}};
@@ -518,17 +542,17 @@ void HPPHDR::setup_descriptor_sets()
 	std::array<vk::WriteDescriptorSet, 2> sampler_write_descriptor_sets = {
 	    {{descriptor_sets.bloom_filter, 0, 0, vk::DescriptorType::eCombinedImageSampler, color_descriptors[0]},
 	     {descriptor_sets.bloom_filter, 1, 0, vk::DescriptorType::eCombinedImageSampler, color_descriptors[1]}}};
-	get_device().get_handle().updateDescriptorSets(sampler_write_descriptor_sets, {});
+	get_device()->get_handle().updateDescriptorSets(sampler_write_descriptor_sets, {});
 
 	// Composition descriptor set
 	alloc_info.setSetLayouts(descriptor_set_layouts.composition);
-	descriptor_sets.composition = get_device().get_handle().allocateDescriptorSets(alloc_info).front();
+	descriptor_sets.composition = get_device()->get_handle().allocateDescriptorSets(alloc_info).front();
 
 	color_descriptors[1].imageView = filter_pass.color[0].view;
 
 	sampler_write_descriptor_sets[0].dstSet = descriptor_sets.composition;
 	sampler_write_descriptor_sets[1].dstSet = descriptor_sets.composition;
-	get_device().get_handle().updateDescriptorSets(sampler_write_descriptor_sets, {});
+	get_device()->get_handle().updateDescriptorSets(sampler_write_descriptor_sets, {});
 }
 
 void HPPHDR::prepare_pipelines()
@@ -586,7 +610,7 @@ void HPPHDR::prepare_pipelines()
 	                                                    -1);
 
 	vk::Result result;
-	std::tie(result, pipelines.composition) = get_device().get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
+	std::tie(result, pipelines.composition) = get_device()->get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
 	assert(result == vk::Result::eSuccess);
 
 	// Bloom pass
@@ -607,13 +631,13 @@ void HPPHDR::prepare_pipelines()
 	vk::SpecializationInfo specialization_info(1, &specialization_map_entry, sizeof(uint32_t), &dir);
 	shader_stages[1].pSpecializationInfo = &specialization_info;
 
-	std::tie(result, pipelines.bloom[0]) = get_device().get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
+	std::tie(result, pipelines.bloom[0]) = get_device()->get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
 	assert(result == vk::Result::eSuccess);
 
 	// Second blur pass (into separate framebuffer)
 	pipeline_create_info.renderPass      = filter_pass.render_pass;
 	dir                                  = 0;
-	std::tie(result, pipelines.bloom[1]) = get_device().get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
+	std::tie(result, pipelines.bloom[1]) = get_device()->get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
 	assert(result == vk::Result::eSuccess);
 
 	// Object rendering pipelines
@@ -652,7 +676,7 @@ void HPPHDR::prepare_pipelines()
 	shader_stages[0].pSpecializationInfo = &specialization_info;
 	shader_stages[1].pSpecializationInfo = &specialization_info;
 
-	std::tie(result, pipelines.skybox) = get_device().get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
+	std::tie(result, pipelines.skybox) = get_device()->get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
 	assert(result == vk::Result::eSuccess);
 
 	// Object rendering pipeline
@@ -663,7 +687,7 @@ void HPPHDR::prepare_pipelines()
 	depth_stencil_state.depthTestEnable  = true;
 	// Flip cull mode
 	rasterization_state.cullMode        = vk::CullModeFlagBits::eFront;
-	std::tie(result, pipelines.reflect) = get_device().get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
+	std::tie(result, pipelines.reflect) = get_device()->get_handle().createGraphicsPipeline(pipeline_cache, pipeline_create_info);
 	assert(result == vk::Result::eSuccess);
 }
 
@@ -671,13 +695,13 @@ void HPPHDR::prepare_pipelines()
 void HPPHDR::prepare_uniform_buffers()
 {
 	// Matrices vertex shader uniform buffer
-	uniform_buffers.matrices = std::make_unique<vkb::core::HPPBuffer>(get_device(),
+	uniform_buffers.matrices = std::make_unique<vkb::core::HPPBuffer>(*get_device(),
 	                                                                  sizeof(ubo_matrices),
 	                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
 	                                                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	// Params
-	uniform_buffers.params = std::make_unique<vkb::core::HPPBuffer>(get_device(),
+	uniform_buffers.params = std::make_unique<vkb::core::HPPBuffer>(*get_device(),
 	                                                                sizeof(ubo_params),
 	                                                                vk::BufferUsageFlagBits::eUniformBuffer,
 	                                                                VMA_MEMORY_USAGE_CPU_TO_GPU);
