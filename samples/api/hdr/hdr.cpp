@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2022, Sascha Willems
+/* Copyright (c) 2019-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -95,7 +95,7 @@ void HDR::build_command_buffers()
 
 		{
 			/*
-				First pass: Render scene to offscreen framebuffer
+			    First pass: Render scene to offscreen framebuffer
 			*/
 
 			std::array<VkClearValue, 3> clear_values;
@@ -113,7 +113,7 @@ void HDR::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) offscreen.width, (float) offscreen.height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(offscreen.width), static_cast<float>(offscreen.height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(offscreen.width, offscreen.height, 0, 0);
@@ -140,7 +140,7 @@ void HDR::build_command_buffers()
 		}
 
 		/*
-			Second render pass: First bloom pass
+		    Second render pass: First bloom pass
 		*/
 		if (bloom)
 		{
@@ -159,7 +159,7 @@ void HDR::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) filter_pass.width, (float) filter_pass.height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(filter_pass.width), static_cast<float>(filter_pass.height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(filter_pass.width, filter_pass.height, 0, 0);
@@ -174,11 +174,11 @@ void HDR::build_command_buffers()
 		}
 
 		/*
-			Note: Explicit synchronization is not required between the render pass, as this is done implicit via sub pass dependencies
+		    Note: Explicit synchronization is not required between the render pass, as this is done implicit via sub pass dependencies
 		*/
 
 		/*
-			Third render pass: Scene rendering with applied second bloom pass (when enabled)
+		    Third render pass: Scene rendering with applied second bloom pass (when enabled)
 		*/
 		{
 			VkClearValue clear_values[2];
@@ -196,7 +196,7 @@ void HDR::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(width, height, 0, 0);
@@ -316,13 +316,13 @@ void HDR::prepare_offscreen_buffer()
 		// Color attachments
 
 		// We are using two 128-Bit RGBA floating point color buffers for this sample
-		// In a performance or bandwith-limited scenario you should consider using a format with lower precision
+		// In a performance or bandwidth-limited scenario you should consider using a format with lower precision
 		create_attachment(color_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &offscreen.color[0]);
 		create_attachment(color_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &offscreen.color[1]);
 		// Depth attachment
 		create_attachment(depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &offscreen.depth);
 
-		// Set up separate renderpass with references to the colorand depth attachments
+		// Set up separate renderpass with references to the color and depth attachments
 		std::array<VkAttachmentDescription, 3> attachment_descriptions = {};
 
 		// Init attachment properties
@@ -364,24 +364,31 @@ void HDR::prepare_offscreen_buffer()
 		subpass.colorAttachmentCount    = 2;
 		subpass.pDepthStencilAttachment = &depth_reference;
 
-		// Use subpass dependencies for attachment layput transitions
+		// Use subpass dependencies for attachment layout transitions
 		std::array<VkSubpassDependency, 2> dependencies;
 
 		dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
 		dependencies[0].dstSubpass      = 0;
-		dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[0].srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
-		dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		// End of previous commands
+		dependencies[0].srcStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[0].srcAccessMask = 0;
+		// Read/write from/to depth
+		dependencies[0].dstStageMask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		// Write to attachment
+		dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 		dependencies[1].srcSubpass      = 0;
 		dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-		dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[1].dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
 		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		// End of write to attachment
+		dependencies[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		// Attachment later read using sampler in 'composition' pipeline
+		dependencies[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 		VkRenderPassCreateInfo render_pass_create_info = {};
 		render_pass_create_info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -434,7 +441,7 @@ void HDR::prepare_offscreen_buffer()
 		// Floating point color attachment
 		create_attachment(color_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &filter_pass.color[0]);
 
-		// Set up separate renderpass with references to the colorand depth attachments
+		// Set up separate renderpass with references to the color and depth attachments
 		std::array<VkAttachmentDescription, 1> attachment_descriptions = {};
 
 		// Init attachment properties
@@ -455,24 +462,31 @@ void HDR::prepare_offscreen_buffer()
 		subpass.pColorAttachments    = color_references.data();
 		subpass.colorAttachmentCount = 1;
 
-		// Use subpass dependencies for attachment layput transitions
+		// Use subpass dependencies for attachment layout transitions
 		std::array<VkSubpassDependency, 2> dependencies;
 
 		dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
 		dependencies[0].dstSubpass      = 0;
-		dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[0].srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
-		dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		// End of previous commands
+		dependencies[0].srcStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[0].srcAccessMask = 0;
+		// Read from image in fragment shader
+		dependencies[0].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		dependencies[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		// Write to attachment
+		dependencies[0].dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 		dependencies[1].srcSubpass      = 0;
 		dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-		dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[1].dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
 		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		// End of write to attachment
+		dependencies[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		// Attachment later read using sampler in 'bloom[0]' pipeline
+		dependencies[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 		VkRenderPassCreateInfo render_pass_create_info = {};
 		render_pass_create_info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -688,7 +702,7 @@ void HDR::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_FALSE,
@@ -874,9 +888,9 @@ void HDR::draw()
 	ApiVulkanSample::submit_frame();
 }
 
-bool HDR::prepare(vkb::Platform &platform)
+bool HDR::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -885,8 +899,8 @@ bool HDR::prepare(vkb::Platform &platform)
 	camera.set_position(glm::vec3(0.0f, 0.0f, -4.0f));
 	camera.set_rotation(glm::vec3(0.0f, 180.0f, 0.0f));
 
-	// Note: Using Revsered depth-buffer for increased precision, so Znear and Zfar are flipped
-	camera.set_perspective(60.0f, (float) width / (float) height, 256.0f, 0.1f);
+	// Note: Using reversed depth-buffer for increased precision, so Znear and Zfar are flipped
+	camera.set_perspective(60.0f, static_cast<float>(width) / static_cast<float>(height), 256.0f, 0.1f);
 
 	load_assets();
 	prepare_uniform_buffers();
@@ -903,10 +917,14 @@ bool HDR::prepare(vkb::Platform &platform)
 void HDR::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 	if (camera.updated)
+	{
 		update_uniform_buffers();
+	}
 }
 
 void HDR::on_update_ui_overlay(vkb::Drawer &drawer)

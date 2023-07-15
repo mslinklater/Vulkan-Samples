@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2022-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -62,16 +62,16 @@ HPPTerrainTessellation::~HPPTerrainTessellation()
 	}
 }
 
-bool HPPTerrainTessellation::prepare(vkb::platform::HPPPlatform &platform)
+bool HPPTerrainTessellation::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!HPPApiVulkanSample::prepare(platform))
+	if (!HPPApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
 
-	// Note: Using Revsered depth-buffer for increased precision, so Znear and Zfar are flipped
+	// Note: Using reversed depth-buffer for increased precision, so Znear and Zfar are flipped
 	camera.type = vkb::CameraType::FirstPerson;
-	camera.set_perspective(60.0f, (float) extent.width / (float) extent.height, 512.0f, 0.1f);
+	camera.set_perspective(60.0f, static_cast<float>(extent.width) / static_cast<float>(extent.height), 512.0f, 0.1f);
 	camera.set_rotation(glm::vec3(-12.0f, 159.0f, 0.0f));
 	camera.set_translation(glm::vec3(18.0f, 22.5f, 57.5f));
 	camera.translation_speed = 7.5f;
@@ -208,7 +208,9 @@ void HPPTerrainTessellation::on_update_ui_overlay(vkb::HPPDrawer &drawer)
 void HPPTerrainTessellation::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 }
 
@@ -221,7 +223,7 @@ void HPPTerrainTessellation::draw()
 {
 	HPPApiVulkanSample::prepare_frame();
 
-	// Command buffer to be sumitted to the queue
+	// Command buffer to be submitted to the queue
 	submit_info.setCommandBuffers(draw_cmd_buffers[current_buffer]);
 
 	// Submit to queue
@@ -254,10 +256,10 @@ void HPPTerrainTessellation::generate_terrain()
 		for (auto y = 0; y < patch_size; y++)
 		{
 			uint32_t index         = (x + y * patch_size);
-			vertices[index].pos[0] = x * wx + wx / 2.0f - (float) patch_size * wx / 2.0f;
+			vertices[index].pos[0] = x * wx + wx / 2.0f - static_cast<float>(patch_size) * wx / 2.0f;
 			vertices[index].pos[1] = 0.0f;
-			vertices[index].pos[2] = y * wy + wy / 2.0f - (float) patch_size * wy / 2.0f;
-			vertices[index].uv     = glm::vec2((float) x / patch_size, (float) y / patch_size) * uv_scale;
+			vertices[index].pos[2] = y * wy + wy / 2.0f - static_cast<float>(patch_size) * wy / 2.0f;
+			vertices[index].uv     = glm::vec2(static_cast<float>(x) / patch_size, static_cast<float>(y) / patch_size) * uv_scale;
 		}
 	}
 
@@ -421,7 +423,7 @@ void HPPTerrainTessellation::prepare_pipelines()
 
 	vk::PipelineMultisampleStateCreateInfo multisample_state({}, vk::SampleCountFlagBits::e1);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	vk::PipelineDepthStencilStateCreateInfo depth_stencil_state;
 	depth_stencil_state.depthCompareOp   = vk::CompareOp::eGreater;
 	depth_stencil_state.depthTestEnable  = true;
@@ -621,8 +623,8 @@ void HPPTerrainTessellation::update_uniform_buffers()
 	// Tessellation
 	ubo_tess.projection   = camera.matrices.perspective;
 	ubo_tess.modelview    = camera.matrices.view * glm::mat4(1.0f);
-	ubo_tess.light_pos.y  = -0.5f - ubo_tess.displacement_factor;        // todo: Not uesed yet
-	ubo_tess.viewport_dim = glm::vec2((float) extent.width, (float) extent.height);
+	ubo_tess.light_pos.y  = -0.5f - ubo_tess.displacement_factor;        // todo: Not used yet
+	ubo_tess.viewport_dim = glm::vec2(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
 	frustum.update(ubo_tess.projection * ubo_tess.modelview);
 	memcpy(ubo_tess.frustum_planes, frustum.get_planes().data(), sizeof(glm::vec4) * 6);

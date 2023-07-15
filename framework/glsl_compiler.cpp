@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2021, Arm Limited and Contributors
+/* Copyright (c) 2019-2023, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,9 +20,10 @@
 VKBP_DISABLE_WARNINGS()
 #include <SPIRV/GLSL.std.450.h>
 #include <SPIRV/GlslangToSpv.h>
-#include <StandAlone/ResourceLimits.h>
+#include <StandAlone/DirStackFileIncluder.h>
 #include <glslang/Include/ShHandle.h>
 #include <glslang/OSDependent/osinclude.h>
+#include <glslang/Public/ResourceLimits.h>
 VKBP_ENABLE_WARNINGS()
 
 namespace vkb
@@ -69,6 +70,12 @@ inline EShLanguage FindShaderLanguage(VkShaderStageFlagBits stage)
 		case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
 			return EShLangCallable;
 
+		case VK_SHADER_STAGE_MESH_BIT_EXT:
+			return EShLangMesh;
+
+		case VK_SHADER_STAGE_TASK_BIT_EXT:
+			return EShLangTask;
+
 		default:
 			return EShLangVertex;
 	}
@@ -76,7 +83,7 @@ inline EShLanguage FindShaderLanguage(VkShaderStageFlagBits stage)
 }        // namespace
 
 glslang::EShTargetLanguage        GLSLCompiler::env_target_language         = glslang::EShTargetLanguage::EShTargetNone;
-glslang::EShTargetLanguageVersion GLSLCompiler::env_target_language_version = (glslang::EShTargetLanguageVersion) 0;
+glslang::EShTargetLanguageVersion GLSLCompiler::env_target_language_version = static_cast<glslang::EShTargetLanguageVersion>(0);
 
 void GLSLCompiler::set_target_environment(glslang::EShTargetLanguage target_language, glslang::EShTargetLanguageVersion target_language_version)
 {
@@ -87,15 +94,15 @@ void GLSLCompiler::set_target_environment(glslang::EShTargetLanguage target_lang
 void GLSLCompiler::reset_target_environment()
 {
 	GLSLCompiler::env_target_language         = glslang::EShTargetLanguage::EShTargetNone;
-	GLSLCompiler::env_target_language_version = (glslang::EShTargetLanguageVersion) 0;
+	GLSLCompiler::env_target_language_version = static_cast<glslang::EShTargetLanguageVersion>(0);
 }
 
 bool GLSLCompiler::compile_to_spirv(VkShaderStageFlagBits       stage,
                                     const std::vector<uint8_t> &glsl_source,
-                                    const std::string &         entry_point,
-                                    const ShaderVariant &       shader_variant,
+                                    const std::string          &entry_point,
+                                    const ShaderVariant        &shader_variant,
                                     std::vector<std::uint32_t> &spirv,
-                                    std::string &               info_log)
+                                    std::string                &info_log)
 {
 	// Initialize glslang library.
 	glslang::InitializeProcess();
@@ -119,7 +126,10 @@ bool GLSLCompiler::compile_to_spirv(VkShaderStageFlagBits       stage,
 		shader.setEnvTarget(GLSLCompiler::env_target_language, GLSLCompiler::env_target_language_version);
 	}
 
-	if (!shader.parse(&glslang::DefaultTBuiltInResource, 100, false, messages))
+	DirStackFileIncluder includeDir;
+	includeDir.pushExternalLocalDirectory("shaders");
+
+	if (!shader.parse(GetDefaultResources(), 100, false, messages, includeDir))
 	{
 		info_log = std::string(shader.getInfoLog()) + "\n" + std::string(shader.getInfoDebugLog());
 		return false;

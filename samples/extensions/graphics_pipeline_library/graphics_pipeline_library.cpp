@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, Sascha Willems
+/* Copyright (c) 2022-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -21,7 +21,7 @@
  * Note: Requires a device that supports the VK_EXT_graphics_pipeline_library
  *
  * Creates a pipeline library for shared pipeline parts like vertex input and fragment output interfaces. These pre-built pipeline
- * "building blocks" are then used for runtime pipeline creation, which wlll be faster than always creating a full pipeline
+ * "building blocks" are then used for runtime pipeline creation, which will be faster than always creating a full pipeline
  */
 
 #include "graphics_pipeline_library.h"
@@ -53,7 +53,7 @@ GraphicsPipelineLibrary::GraphicsPipelineLibrary()
 {
 	title = "Graphics pipeline library";
 
-	// Graphics pipeline library related etensions required by this sample
+	// Graphics pipeline library related extensions required by this sample
 	add_instance_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 	add_device_extension(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
 	add_device_extension(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
@@ -118,8 +118,8 @@ void GraphicsPipelineLibrary::build_command_buffers()
 
 		vkCmdBindDescriptorSets(draw_cmd_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
 
-		float w = (float) width / (float) split_x;
-		float h = (float) height / (float) split_y;
+		float w = static_cast<float>(width) / static_cast<float>(split_x);
+		float h = static_cast<float>(height) / static_cast<float>(split_y);
 
 		uint32_t idx = 0;
 		for (uint32_t y = 0; y < split_y; y++)
@@ -127,8 +127,8 @@ void GraphicsPipelineLibrary::build_command_buffers()
 			for (uint32_t x = 0; x < split_x; x++)
 			{
 				VkViewport viewport{};
-				viewport.x        = w * (float) x;
-				viewport.y        = h * (float) y;
+				viewport.x        = w * static_cast<float>(x);
+				viewport.y        = h * static_cast<float>(y);
 				viewport.width    = w;
 				viewport.height   = h;
 				viewport.minDepth = 0.0f;
@@ -136,10 +136,10 @@ void GraphicsPipelineLibrary::build_command_buffers()
 				vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 				VkRect2D scissor{};
-				scissor.extent.width  = (uint32_t) w;
-				scissor.extent.height = (uint32_t) h;
-				scissor.offset.x      = (uint32_t) w * x;
-				scissor.offset.y      = (uint32_t) h * y;
+				scissor.extent.width  = static_cast<uint32_t>(w);
+				scissor.extent.height = static_cast<uint32_t>(h);
+				scissor.offset.x      = static_cast<uint32_t>(w) * x;
+				scissor.offset.y      = static_cast<uint32_t>(h) * y;
 				vkCmdSetScissor(draw_cmd_buffers[i], 0, 1, &scissor);
 
 				if (pipelines.size() > idx)
@@ -229,7 +229,7 @@ void GraphicsPipelineLibrary::compile_shader(const std::string filename, VkShade
 	}
 }
 
-// This function pre-builts shared pipeline parts ("pipeline library")
+// This function pre-built shared pipeline parts ("pipeline library")
 // E.g. vertex input and fragment out interface, which are the same for all pipelines created in this sample
 void GraphicsPipelineLibrary::prepare_pipeline_library()
 {
@@ -265,7 +265,7 @@ void GraphicsPipelineLibrary::prepare_pipeline_library()
 		VK_CHECK(vkCreateGraphicsPipelines(get_device().get_handle(), pipeline_cache, 1, &pipeline_library_create_info, nullptr, &pipeline_library.vertex_input_interface));
 	}
 
-	// Creata a pipeline library for the vertex shader stage
+	// Create a pipeline library for the vertex shader stage
 	{
 		VkGraphicsPipelineLibraryCreateInfoEXT library_info{};
 		library_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT;
@@ -366,8 +366,8 @@ void GraphicsPipelineLibrary::prepare_new_pipeline()
 	shader_Stage_create_info.pName = "main";
 
 	// Select lighting model using a specialization constant
-	srand((unsigned int) time(NULL));
-	uint32_t lighting_model = (int) (rand() % 3);
+	srand(static_cast<unsigned int>(time(NULL)));
+	uint32_t lighting_model = (rand() % 3);
 
 	// Each shader constant of a shader stage corresponds to one map entry
 	VkSpecializationMapEntry specialization_map_entry{};
@@ -444,7 +444,7 @@ void GraphicsPipelineLibrary::prepare_uniform_buffers()
 
 void GraphicsPipelineLibrary::update_uniform_buffers()
 {
-	camera.set_perspective(45.0f, ((float) width / (float) split_x) / ((float) height / (float) split_y), 0.1f, 256.0f);
+	camera.set_perspective(45.0f, (static_cast<float>(width) / static_cast<float>(split_x)) / (static_cast<float>(height) / static_cast<float>(split_y)), 0.1f, 256.0f);
 
 	ubo_vs.projection = camera.matrices.perspective;
 	ubo_vs.modelview  = camera.matrices.view * glm::rotate(glm::mat4(1.0f), glm::radians(accumulated_time * 360.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -461,9 +461,9 @@ void GraphicsPipelineLibrary::draw()
 	ApiVulkanSample::submit_frame();
 }
 
-bool GraphicsPipelineLibrary::prepare(vkb::Platform &platform)
+bool GraphicsPipelineLibrary::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -508,7 +508,9 @@ bool GraphicsPipelineLibrary::prepare(vkb::Platform &platform)
 void GraphicsPipelineLibrary::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	if (new_pipeline_created)
 	{
 		new_pipeline_created = false;
@@ -529,7 +531,7 @@ void GraphicsPipelineLibrary::on_update_ui_overlay(vkb::Drawer &drawer)
 		(drawer.checkbox("Link time optimization", &link_time_optimization));
 		if (drawer.button("Add pipeline"))
 		{
-			// Spwan a thread to create a new pipeline in the background
+			// Spawn a thread to create a new pipeline in the background
 			std::thread pipeline_generation_thread(&GraphicsPipelineLibrary::pipeline_creation_threadfn, this);
 			pipeline_generation_thread.detach();
 		}

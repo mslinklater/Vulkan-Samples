@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2022, Arm Limited and Contributors
+/* Copyright (c) 2019-2023, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -78,16 +78,16 @@ RenderPipeline &VulkanSample::get_render_pipeline()
 	return *render_pipeline;
 }
 
-bool VulkanSample::prepare(Platform &platform)
+bool VulkanSample::prepare(const ApplicationOptions &options)
 {
-	if (!Application::prepare(platform))
+	if (!Application::prepare(options))
 	{
 		return false;
 	}
 
 	LOGI("Initializing Vulkan sample");
 
-	bool headless = platform.get_window().get_window_mode() == Window::Mode::Headless;
+	bool headless = window->get_window_mode() == Window::Mode::Headless;
 
 	VkResult result = volkInitialize();
 	if (result)
@@ -98,7 +98,10 @@ bool VulkanSample::prepare(Platform &platform)
 	std::unique_ptr<DebugUtils> debug_utils{};
 
 	// Creating the vulkan instance
-	add_instance_extension(platform.get_surface_extension());
+	for (const char *extension_name : window->get_required_surface_extensions())
+	{
+		add_instance_extension(extension_name);
+	}
 
 #ifdef VKB_VULKAN_DEBUG
 	{
@@ -130,9 +133,11 @@ bool VulkanSample::prepare(Platform &platform)
 	}
 
 	// Getting a valid vulkan surface from the platform
-	surface = platform.get_window().create_surface(*instance);
+	surface = window->create_surface(*instance);
 	if (!surface)
+	{
 		throw std::runtime_error("Failed to create window surface.");
+	}
 
 	auto &gpu = instance->get_suitable_gpu(surface);
 	gpu.set_high_priority_graphics_queue_enable(high_priority_graphics_queue);
@@ -152,7 +157,9 @@ bool VulkanSample::prepare(Platform &platform)
 		add_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 		if (instance_extensions.find(VK_KHR_DISPLAY_EXTENSION_NAME) != instance_extensions.end())
+		{
 			add_device_extension(VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME, /*optional=*/true);
+		}
 	}
 
 #ifdef VKB_VULKAN_DEBUG
@@ -195,7 +202,7 @@ bool VulkanSample::prepare(Platform &platform)
 		device = std::make_unique<vkb::Device>(gpu, surface, std::move(debug_utils), get_device_extensions());
 	}
 
-	create_render_context(platform);
+	create_render_context();
 	prepare_render_context();
 
 	stats = std::make_unique<vkb::Stats>(*render_context);
@@ -214,12 +221,23 @@ void VulkanSample::create_instance()
 {
 }
 
-void VulkanSample::create_render_context(Platform &platform)
+void VulkanSample::create_render_context()
 {
-	auto surface_priority_list = std::vector<VkSurfaceFormatKHR>{{VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR},
-	                                                             {VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}};
+	auto surface_priority_list = std::vector<VkSurfaceFormatKHR>{{VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, {VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}};
+	create_render_context(surface_priority_list);
+}
 
-	render_context = platform.create_render_context(*device, surface, surface_priority_list);
+void VulkanSample::create_render_context(const std::vector<VkSurfaceFormatKHR> &surface_priority_list)
+{
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+	VkPresentModeKHR              present_mode = (window->get_properties().vsync == Window::Vsync::OFF) ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+	std::vector<VkPresentModeKHR> present_mode_priority_list{VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR};
+#else
+	VkPresentModeKHR              present_mode = (window->get_properties().vsync == Window::Vsync::ON) ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
+	std::vector<VkPresentModeKHR> present_mode_priority_list{VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR};
+#endif
+
+	render_context = std::make_unique<RenderContext>(get_device(), surface, *window, present_mode, present_mode_priority_list, surface_priority_list);
 }
 
 void VulkanSample::prepare_render_context()
@@ -231,7 +249,7 @@ void VulkanSample::update_scene(float delta_time)
 {
 	if (scene)
 	{
-		//Update scripts
+		// Update scripts
 		if (scene->has_component<sg::Script>())
 		{
 			auto scripts = scene->get_components<sg::Script>();
@@ -242,7 +260,7 @@ void VulkanSample::update_scene(float delta_time)
 			}
 		}
 
-		//Update animations
+		// Update animations
 		if (scene->has_component<sg::Animation>())
 		{
 			auto animations = scene->get_components<sg::Animation>();
@@ -313,13 +331,12 @@ void VulkanSample::update(float delta_time)
 	command_buffer.end();
 
 	render_context->submit(command_buffer);
-
-	platform->on_post_draw(get_render_context());
 }
 
 void VulkanSample::draw(CommandBuffer &command_buffer, RenderTarget &render_target)
 {
 	auto &views = render_target.get_views();
+	assert(1 < views.size());
 
 	{
 		// Image 0 is the swapchain
@@ -331,12 +348,12 @@ void VulkanSample::draw(CommandBuffer &command_buffer, RenderTarget &render_targ
 		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-		command_buffer.image_memory_barrier(views.at(0), memory_barrier);
+		command_buffer.image_memory_barrier(views[0], memory_barrier);
 
 		// Skip 1 as it is handled later as a depth-stencil attachment
 		for (size_t i = 2; i < views.size(); ++i)
 		{
-			command_buffer.image_memory_barrier(views.at(i), memory_barrier);
+			command_buffer.image_memory_barrier(views[i], memory_barrier);
 		}
 	}
 
@@ -349,7 +366,7 @@ void VulkanSample::draw(CommandBuffer &command_buffer, RenderTarget &render_targ
 		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
-		command_buffer.image_memory_barrier(views.at(1), memory_barrier);
+		command_buffer.image_memory_barrier(views[1], memory_barrier);
 	}
 
 	draw_renderpass(command_buffer, render_target);
@@ -362,7 +379,7 @@ void VulkanSample::draw(CommandBuffer &command_buffer, RenderTarget &render_targ
 		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-		command_buffer.image_memory_barrier(views.at(0), memory_barrier);
+		command_buffer.image_memory_barrier(views[0], memory_barrier);
 	}
 }
 
@@ -502,9 +519,10 @@ void VulkanSample::update_debug_window()
 		get_debug_info().insert<field::Static, uint32_t>("texture_count",
 		                                                 to_u32(scene->get_components<sg::Texture>().size()));
 
-		if (auto camera = scene->get_components<vkb::sg::Camera>().at(0))
+		auto cameras = scene->get_components<vkb::sg::Camera>();
+		if (!cameras.empty())
 		{
-			if (auto camera_node = camera->get_node())
+			if (auto camera_node = cameras[0]->get_node())
 			{
 				const glm::vec3 &pos = camera_node->get_transform().get_translation();
 				get_debug_info().insert<field::Vector, float>("camera_pos", pos.x, pos.y, pos.z);

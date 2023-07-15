@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build:
@@ -25,11 +25,31 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install xorg-dev libglu1-mesa-dev
-      - name: Configure
-        run: cmake -H"." -B"build/${{ matrix.platform }}" -DVKB_BUILD_TESTS=ON -DVKB_BUILD_SAMPLES=ON
-      - name: "Build ${{ matrix.platform }} in ${{ matrix.build_type }}"
-        run: cmake --build "build/${{ matrix.platform }}" --target vulkan_samples --config ${{ matrix.build_type }} ${{ env.PARALLEL }}
-
+      - if: ${{ matrix.platform == 'windows' }}
+        name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+      - if: ${{ matrix.platform == 'windows' }}
+        name: sccache
+        uses: hendrikmuhs/ccache-action@v1.2.9
+        with:
+          key: ${{ github.job }}-${{ matrix.os }}
+          variant: sccache
+      - if: ${{ matrix.platform != 'windows' }}
+        name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.9
+        with:
+          key: ${{ github.job }}-${{ matrix.os }}
+      - if: ${{ matrix.platform == 'windows' }}
+        name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -H"." -B"build/${{ matrix.platform }}" -G"NMake Makefiles" -DVKB_BUILD_TESTS=ON -DVKB_BUILD_SAMPLES=ON -DCMAKE_C_COMPILER_LAUNCHER=C:\\Users\\runneradmin\\.cargo\\bin\\sccache -DCMAKE_CXX_COMPILER_LAUNCHER=C:\\Users\\runneradmin\\.cargo\\bin\\sccache
+          cmake --build "build/${{ matrix.platform }}" --target vulkan_samples --config ${{ matrix.build_type }}  -j 1
+      - if: ${{ matrix.platform != 'windows' }}
+        name: Configure and build
+        run: |
+          cmake -H"." -B"build/${{ matrix.platform }}" -DVKB_BUILD_TESTS=ON -DVKB_BUILD_SAMPLES=ON
+          cmake --build "build/${{ matrix.platform }}" --target vulkan_samples --config ${{ matrix.build_type }} ${{ env.PARALLEL }}
 
   build_d2d:
     name: "Build Ubuntu with Direct To Display"
@@ -44,6 +64,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install xorg-dev libglu1-mesa-dev
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ matrix.os }}
       - name: Configure
         run: cmake -H"." -B"build/ubuntu-latest-d2d" -DVKB_BUILD_TESTS=ON -DVKB_BUILD_SAMPLES=ON -DVKB_WSI_SELECTION=D2D
       - name: "Build Ubuntu in Release with VKB_WSI_SELECTION=D2D"
@@ -51,20 +75,30 @@ jobs:
 
   build_android:
     name: "Build Android in ${{ matrix.build_type }}"
-    container: ghcr.io/khronosgroupactions/android-ndk-build:r25b
     runs-on: ubuntu-latest
     strategy:
       matrix:
         build_type: [Debug]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: "recursive"
 
+      - name: set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: "11"
+          distribution: "temurin"
+          cache: gradle
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.9
+        with:
+          key: ${{ github.job }}-${{ matrix.os }}
+
       - name: "Run generate script"
-        run: ./bldsys/scripts/generate_android_gradle.sh
+        run: ./scripts/generate.py android
 
       - name: "Build Android using gradlew."
         working-directory: build/android_gradle
-        run: ./gradlew app:assemble${{ matrix.build_type }}
+        run: NDK_CCACHE=1 NDK_CCACHE_BIN=ccache ./gradlew app:assemble${{ matrix.build_type }} --info

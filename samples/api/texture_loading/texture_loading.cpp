@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2022, Sascha Willems
+/* Copyright (c) 2019-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -59,21 +59,21 @@ void TextureLoading::request_gpu_features(vkb::PhysicalDevice &gpu)
 }
 
 /*
-	Upload texture image data to the GPU
+    Upload texture image data to the GPU
 
-	Vulkan offers two types of image tiling (memory layout):
+    Vulkan offers two types of image tiling (memory layout):
 
-	Linear tiled images:
-		These are stored as is and can be copied directly to. But due to the linear nature they're not a good match for GPUs and format and feature support is very limited.
-		It's not advised to use linear tiled images for anything else than copying from host to GPU if buffer copies are not an option.
-		Linear tiling is thus only implemented for learning purposes, one should always prefer optimal tiled image.
+    Linear tiled images:
+        These are stored as is and can be copied directly to. But due to the linear nature they're not a good match for GPUs and format and feature support is very limited.
+        It's not advised to use linear tiled images for anything else than copying from host to GPU if buffer copies are not an option.
+        Linear tiling is thus only implemented for learning purposes, one should always prefer optimal tiled image.
 
-	Optimal tiled images:
-		These are stored in an implementation specific layout matching the capability of the hardware. They usually support more formats and features and are much faster.
-		Optimal tiled images are stored on the device and not accessible by the host. So they can't be written directly to (like liner tiled images) and always require 
-		some sort of data copy, either from a buffer or	a linear tiled image.
-		
-	In Short: Always use optimal tiled images for rendering.
+    Optimal tiled images:
+        These are stored in an implementation specific layout matching the capability of the hardware. They usually support more formats and features and are much faster.
+        Optimal tiled images are stored on the device and not accessible by the host. So they can't be written directly to (like liner tiled images) and always require
+        some sort of data copy, either from a buffer or	a linear tiled image.
+
+    In Short: Always use optimal tiled images for rendering.
 */
 void TextureLoading::load_texture()
 {
@@ -82,7 +82,7 @@ void TextureLoading::load_texture()
 	// ktx1 doesn't know whether the content is sRGB or linear, but most tools save in sRGB, so assume that.
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 
-	ktxTexture *   ktx_texture;
+	ktxTexture    *ktx_texture;
 	KTX_error_code result;
 
 	result = ktxTexture_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
@@ -92,7 +92,7 @@ void TextureLoading::load_texture()
 		throw std::runtime_error("Couldn't load texture");
 	}
 
-	//assert(!tex2D.empty());
+	// assert(!tex2D.empty());
 
 	texture.width      = ktx_texture->baseWidth;
 	texture.height     = ktx_texture->baseHeight;
@@ -106,7 +106,7 @@ void TextureLoading::load_texture()
 	if (force_linear_tiling)
 	{
 		// Don't use linear if format is not supported for (linear) shader sampling
-		// Get device properites for the requested texture format
+		// Get device properties for the requested texture format
 		VkFormatProperties format_properties;
 		vkGetPhysicalDeviceFormatProperties(get_device().get_gpu().get_handle(), format, &format_properties);
 		use_staging = !(format_properties.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
@@ -215,8 +215,8 @@ void TextureLoading::load_texture()
 		image_memory_barrier.newLayout        = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage is host write/read exection (VK_PIPELINE_STAGE_HOST_BIT)
-		// Destination pipeline stage is copy command exection (VK_PIPELINE_STAGE_TRANSFER_BIT)
+		// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
+		// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		vkCmdPipelineBarrier(
 		    copy_command,
 		    VK_PIPELINE_STAGE_HOST_BIT,
@@ -242,7 +242,7 @@ void TextureLoading::load_texture()
 		image_memory_barrier.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage stage is copy command exection (VK_PIPELINE_STAGE_TRANSFER_BIT)
+		// Source pipeline stage stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 		vkCmdPipelineBarrier(
 		    copy_command,
@@ -293,7 +293,7 @@ void TextureLoading::load_texture()
 		VK_CHECK(vkBindImageMemory(get_device().get_handle(), mappable_image, mappable_memory, 0));
 
 		// Map image memory
-		void *     data;
+		void      *data;
 		ktx_size_t ktx_image_size = ktxTexture_GetImageSize(ktx_texture, 0);
 		VK_CHECK(vkMapMemory(get_device().get_handle(), mappable_memory, 0, memory_requirements.size, 0, &data));
 		// Copy image data of the first mip level into memory
@@ -326,7 +326,7 @@ void TextureLoading::load_texture()
 		image_memory_barrier.newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage is host write/read exection (VK_PIPELINE_STAGE_HOST_BIT)
+		// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 		// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 		vkCmdPipelineBarrier(
 		    copy_command,
@@ -355,7 +355,7 @@ void TextureLoading::load_texture()
 	sampler.compareOp           = VK_COMPARE_OP_NEVER;
 	sampler.minLod              = 0.0f;
 	// Set max level-of-detail to mip level count of the texture
-	sampler.maxLod = (use_staging) ? (float) texture.mip_levels : 0.0f;
+	sampler.maxLod = (use_staging) ? static_cast<float>(texture.mip_levels) : 0.0f;
 	// Enable anisotropic filtering
 	// This feature is optional, so we must check if it's supported on the device
 	if (get_device().get_gpu().get_features().samplerAnisotropy)
@@ -430,7 +430,7 @@ void TextureLoading::build_command_buffers()
 
 		vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f, 1.0f);
+		VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
 		vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 		VkRect2D scissor = vkb::initializers::rect2D(width, height, 0, 0);
@@ -457,7 +457,7 @@ void TextureLoading::draw()
 {
 	ApiVulkanSample::prepare_frame();
 
-	// Command buffer to be sumitted to the queue
+	// Command buffer to be submitted to the queue
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers    = &draw_cmd_buffers[current_buffer];
 
@@ -611,7 +611,7 @@ void TextureLoading::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_TRUE,
@@ -692,7 +692,7 @@ void TextureLoading::prepare_uniform_buffers()
 void TextureLoading::update_uniform_buffers()
 {
 	// Vertex shader
-	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), (float) width / (float) height, 0.001f, 256.0f);
+	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), static_cast<float>(width) / static_cast<float>(height), 0.001f, 256.0f);
 	glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, zoom));
 
 	ubo_vs.model = view_matrix * glm::translate(glm::mat4(1.0f), camera_pos);
@@ -705,9 +705,9 @@ void TextureLoading::update_uniform_buffers()
 	uniform_buffer_vs->convert_and_update(ubo_vs);
 }
 
-bool TextureLoading::prepare(vkb::Platform &platform)
+bool TextureLoading::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -726,7 +726,9 @@ bool TextureLoading::prepare(vkb::Platform &platform)
 void TextureLoading::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 }
 
@@ -739,7 +741,7 @@ void TextureLoading::on_update_ui_overlay(vkb::Drawer &drawer)
 {
 	if (drawer.header("Settings"))
 	{
-		if (drawer.slider_float("LOD bias", &ubo_vs.lod_bias, 0.0f, (float) texture.mip_levels))
+		if (drawer.slider_float("LOD bias", &ubo_vs.lod_bias, 0.0f, static_cast<float>(texture.mip_levels)))
 		{
 			update_uniform_buffers();
 		}

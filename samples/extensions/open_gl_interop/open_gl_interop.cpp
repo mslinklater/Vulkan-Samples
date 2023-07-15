@@ -1,5 +1,5 @@
-/* Copyright (c) 2020-2022, Bradley Austin Davis
- * Copyright (c) 2020-2022, Arm Limited
+/* Copyright (c) 2020-2023, Bradley Austin Davis
+ * Copyright (c) 2020-2023, Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -22,16 +22,12 @@
 #include "gltf_loader.h"
 #include "gui.h"
 #include "platform/filesystem.h"
-#include "platform/platform.h"
-#include "rendering/subpasses/forward_subpass.h"
 
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
-#	include "platform/android/android_platform.h"
-#endif
+#include "rendering/subpasses/forward_subpass.h"
 
 #include "offscreen_context.h"
 
-constexpr const char *OPENG_VERTEX_SHADER =
+constexpr const char *OPENGL_VERTEX_SHADER =
     R"SHADER(
 const vec4 VERTICES[] = vec4[](
     vec4(-1.0, -1.0, 0.0, 1.0), 
@@ -171,7 +167,7 @@ void OpenGLInterop::prepare_shared_resources()
 
 		VkExportSemaphoreCreateInfo exportSemaphoreCreateInfo{
 		    VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO, nullptr,
-		    VkExternalSemaphoreHandleTypeFlags(compatable_semaphore_type)};
+		    static_cast<VkExternalSemaphoreHandleTypeFlags>(compatable_semaphore_type)};
 		VkSemaphoreCreateInfo semaphoreCreateInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		                                          &exportSemaphoreCreateInfo};
 		VK_CHECK(vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
@@ -200,7 +196,11 @@ void OpenGLInterop::prepare_shared_resources()
 
 	{
 		VkExternalMemoryImageCreateInfo external_memory_image_create_info{VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO};
+#if WIN32
+		external_memory_image_create_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+#else
 		external_memory_image_create_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
+#endif
 		VkImageCreateInfo imageCreateInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
 		imageCreateInfo.pNext         = &external_memory_image_create_info;
 		imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -224,7 +224,7 @@ void OpenGLInterop::prepare_shared_resources()
 
 		memAllocInfo.allocationSize = sharedTexture.allocationSize = memReqs.size;
 		memAllocInfo.memoryTypeIndex                               = device->get_memory_type(memReqs.memoryTypeBits,
-                                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		                                                                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		VK_CHECK(vkAllocateMemory(deviceHandle, &memAllocInfo, nullptr, &sharedTexture.memory));
 		VK_CHECK(vkBindImageMemory(deviceHandle, sharedTexture.image, sharedTexture.memory, 0));
 
@@ -245,9 +245,9 @@ void OpenGLInterop::prepare_shared_resources()
 		samplerCreateInfo.magFilter  = VK_FILTER_LINEAR;
 		samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
 		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.maxLod     = (float) 1;
-		//samplerCreateInfo.maxAnisotropy = context.deviceFeatures.samplerAnisotropy ? context.deviceProperties.limits.maxSamplerAnisotropy : 1.0f;
-		//samplerCreateInfo.anisotropyEnable = context.deviceFeatures.samplerAnisotropy;
+		samplerCreateInfo.maxLod     = static_cast<float>(1);
+		// samplerCreateInfo.maxAnisotropy = context.deviceFeatures.samplerAnisotropy ? context.deviceProperties.limits.maxSamplerAnisotropy : 1.0f;
+		// samplerCreateInfo.anisotropyEnable = context.deviceFeatures.samplerAnisotropy;
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 		vkCreateSampler(deviceHandle, &samplerCreateInfo, nullptr, &sharedTexture.sampler);
 
@@ -437,7 +437,7 @@ void OpenGLInterop::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_TRUE,
@@ -525,8 +525,8 @@ void OpenGLInterop::prepare_uniform_buffers()
 void OpenGLInterop::update_uniform_buffers()
 {
 	// Vertex shader
-	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), (float) width / (float) height,
-                                         0.001f, 256.0f);
+	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), static_cast<float>(width) / static_cast<float>(height),
+	                                         0.001f, 256.0f);
 	glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, zoom));
 
 	ubo_vs.model = view_matrix * glm::translate(glm::mat4(1.0f), camera_pos);
@@ -539,9 +539,9 @@ void OpenGLInterop::update_uniform_buffers()
 	uniform_buffer_vs->convert_and_update(ubo_vs);
 }
 
-bool OpenGLInterop::prepare(vkb::Platform &platform)
+bool OpenGLInterop::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -552,7 +552,7 @@ bool OpenGLInterop::prepare(vkb::Platform &platform)
 
 	prepare_shared_resources();
 
-	gl_data->program = gl_context->build_program(OPENG_VERTEX_SHADER, OPENGL_FRAGMENT_SHADER);
+	gl_data->program = gl_context->build_program(OPENGL_VERTEX_SHADER, OPENGL_FRAGMENT_SHADER);
 
 	timer.start();
 
@@ -592,8 +592,8 @@ bool OpenGLInterop::prepare(vkb::Platform &platform)
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, gl_data->color, 0);
 
 	glUseProgram(gl_data->program);
-	glProgramUniform3f(gl_data->program, 0, (float) SHARED_TEXTURE_DIMENSION,
-	                   (float) SHARED_TEXTURE_DIMENSION, 0.0f);
+	glProgramUniform3f(gl_data->program, 0, static_cast<float>(SHARED_TEXTURE_DIMENSION),
+	                   static_cast<float>(SHARED_TEXTURE_DIMENSION), 0.0f);
 
 	glViewport(0, 0, SHARED_TEXTURE_DIMENSION, SHARED_TEXTURE_DIMENSION);
 
@@ -611,11 +611,13 @@ bool OpenGLInterop::prepare(vkb::Platform &platform)
 void OpenGLInterop::render(float)
 {
 	if (!prepared)
+	{
 		return;
+	}
 
 	ApiVulkanSample::prepare_frame();
 	// RENDER
-	float time = (float) timer.elapsed();
+	float time = static_cast<float>(timer.elapsed());
 	// The GL shader animates the image, so provide the time as input
 	glProgramUniform1f(gl_data->program, 1, time);
 
@@ -647,7 +649,7 @@ void OpenGLInterop::render(float)
 	std::array<VkSemaphore, 2>          waitSemaphores{{semaphores.acquired_image_ready, sharedSemaphores.gl_complete}};
 
 	std::array<VkSemaphore, 2> signalSemaphores{{semaphores.render_complete, sharedSemaphores.gl_ready}};
-	// Command buffer to be sumitted to the queue
+	// Command buffer to be submitted to the queue
 	submit_info.waitSemaphoreCount   = vkb::to_u32(waitSemaphores.size());
 	submit_info.pWaitSemaphores      = waitSemaphores.data();
 	submit_info.pWaitDstStageMask    = waitStages.data();
@@ -720,7 +722,7 @@ void OpenGLInterop::build_command_buffers()
 		vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info,
 		                     VK_SUBPASS_CONTENTS_INLINE);
 
-		VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f,
+		VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f,
 		                                                  1.0f);
 		vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
@@ -756,8 +758,8 @@ void OpenGLInterop::build_command_buffers()
 			subresource_range.layerCount               = 1;
 
 			// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-			// Source pipeline stage is host write/read exection (VK_PIPELINE_STAGE_HOST_BIT)
-			// Destination pipeline stage is copy command exection (VK_PIPELINE_STAGE_TRANSFER_BIT)
+			// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
+			// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 			vkCmdPipelineBarrier(
 			    draw_cmd_buffers[i],
 			    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,

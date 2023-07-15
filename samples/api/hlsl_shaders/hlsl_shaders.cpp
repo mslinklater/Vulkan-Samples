@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, Sascha Willems
+/* Copyright (c) 2021-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -23,7 +23,7 @@
 
 VKBP_DISABLE_WARNINGS()
 #include <SPIRV/GlslangToSpv.h>
-#include <StandAlone/ResourceLimits.h>
+#include <glslang/Public/ResourceLimits.h>
 VKBP_ENABLE_WARNINGS()
 
 VkPipelineShaderStageCreateInfo HlslShaders::load_hlsl_shader(const std::string &file, VkShaderStageFlagBits stage)
@@ -62,7 +62,7 @@ VkPipelineShaderStageCreateInfo HlslShaders::load_hlsl_shader(const std::string 
 	shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
 	shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_0);
 
-	if (!shader.parse(&glslang::DefaultTBuiltInResource, 100, false, messages))
+	if (!shader.parse(GetDefaultResources(), 100, false, messages))
 	{
 		LOGE("Failed to parse HLSL shader, Error: {}", std::string(shader.getInfoLog()) + "\n" + std::string(shader.getInfoDebugLog()));
 		throw std::runtime_error("Failed to parse HLSL shader");
@@ -182,7 +182,7 @@ void HlslShaders::build_command_buffers()
 
 		vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f, 1.0f);
+		VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
 		vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 		VkRect2D scissor = vkb::initializers::rect2D(static_cast<int32_t>(width), static_cast<int32_t>(height), 0, 0);
@@ -383,7 +383,7 @@ void HlslShaders::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_TRUE,
@@ -463,7 +463,7 @@ void HlslShaders::prepare_uniform_buffers()
 void HlslShaders::update_uniform_buffers()
 {
 	// Vertex shader
-	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), (float) width / (float) height, 0.001f, 256.0f);
+	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), static_cast<float>(width) / static_cast<float>(height), 0.001f, 256.0f);
 	glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, zoom));
 
 	ubo_vs.model = view_matrix * glm::translate(glm::mat4(1.0f), camera_pos);
@@ -476,9 +476,9 @@ void HlslShaders::update_uniform_buffers()
 	uniform_buffer_vs->convert_and_update(ubo_vs);
 }
 
-bool HlslShaders::prepare(vkb::Platform &platform)
+bool HlslShaders::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -497,7 +497,9 @@ bool HlslShaders::prepare(vkb::Platform &platform)
 void HlslShaders::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 }
 

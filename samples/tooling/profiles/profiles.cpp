@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, Sascha Willems
+/* Copyright (c) 2022-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -63,7 +63,7 @@ void Profiles::create_device()
 
 	// Simplified queue setup (only graphics)
 	uint32_t                selected_queue_family   = 0;
-	const auto &            queue_family_properties = gpu.get_queue_family_properties();
+	const auto             &queue_family_properties = gpu.get_queue_family_properties();
 	const float             default_queue_priority{0.0f};
 	VkDeviceQueueCreateInfo queue_create_info{};
 	queue_create_info.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -136,16 +136,20 @@ void Profiles::create_instance()
 		throw std::runtime_error{"The selected profile is not supported (error at creating the instance)!"};
 	}
 
-	// Even when using profiles we still need to provide the platform sepcific surface extension
+	// Even when using profiles we still need to provide the platform specific surface extension
 	std::vector<const char *> enabled_extensions;
 	enabled_extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-	enabled_extensions.push_back(platform->get_surface_extension());
+
+	for (const char *extension_name : window->get_required_surface_extensions())
+	{
+		enabled_extensions.push_back(extension_name);
+	}
 
 	VkInstanceCreateInfo create_info{};
 	create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	create_info.ppEnabledExtensionNames = enabled_extensions.data();
 	create_info.enabledExtensionCount   = static_cast<uint32_t>(enabled_extensions.size());
-	// Note: We don't explicitly set an application infor here so the one from the profile is used
+	// Note: We don't explicitly set an application info here so the one from the profile is used
 	// This also defines the api version to be used
 
 	// Create the instance using the profile tool library
@@ -220,7 +224,7 @@ void Profiles::generate_textures()
 		std::default_random_engine           rnd_engine(rnd_device());
 		std::uniform_int_distribution<short> rnd_dist(0, 255);
 		const size_t                         buffer_size = dim * dim * 4;
-		uint8_t *                            buffer      = staging_buffer->map();
+		uint8_t                             *buffer      = staging_buffer->map();
 		for (size_t i = 0; i < dim * dim; i++)
 		{
 			buffer[i * 4]     = static_cast<uint8_t>(rnd_dist(rnd_engine));
@@ -291,7 +295,7 @@ void Profiles::generate_cubes()
 	const uint32_t count = 6;
 	for (uint32_t i = 0; i < count; i++)
 	{
-		// Get a random texture indice that the shader will sample from via the vertex attribute
+		// Get a random texture index that the shader will sample from via the vertex attribute
 		const auto texture_index = [&rndDist, &rndEngine]() {
 			return rndDist(rndEngine);
 		};
@@ -390,7 +394,7 @@ void Profiles::build_command_buffers()
 		render_pass_begin_info.framebuffer = framebuffers[i];
 		VK_CHECK(vkBeginCommandBuffer(draw_cmd_buffers[i], &command_buffer_begin_info));
 		vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-		VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f, 1.0f);
+		VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
 		vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 		VkRect2D scissor = vkb::initializers::rect2D(static_cast<int32_t>(width), static_cast<int32_t>(height), 0, 0);
 		vkCmdSetScissor(draw_cmd_buffers[i], 0, 1, &scissor);
@@ -541,7 +545,7 @@ void Profiles::setup_descriptor_set()
 		texture_descriptors[i].imageView   = textures[i].image_view;
 	}
 
-	// Unlike an array texture, these are adressed like typical arrays
+	// Unlike an array texture, these are addressed like typical arrays
 	write_descriptor_sets[1]                 = {};
 	write_descriptor_sets[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write_descriptor_sets[1].dstBinding      = 1;
@@ -580,7 +584,7 @@ void Profiles::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_TRUE,
@@ -662,9 +666,9 @@ void Profiles::update_uniform_buffers()
 	uniform_buffer_vs->convert_and_update(ubo_vs);
 }
 
-bool Profiles::prepare(vkb::Platform &platform)
+bool Profiles::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -674,7 +678,7 @@ bool Profiles::prepare(vkb::Platform &platform)
 	camera.set_rotation(glm::vec3(0.0f));
 
 	// Note: Using reversed depth-buffer for increased precision, so Znear and Zfar are flipped
-	camera.set_perspective(60.0f, (float) width / (float) height, 256.0f, 0.1f);
+	camera.set_perspective(60.0f, static_cast<float>(width) / static_cast<float>(height), 256.0f, 0.1f);
 
 	generate_textures();
 	generate_cubes();
@@ -691,7 +695,9 @@ bool Profiles::prepare(vkb::Platform &platform)
 void Profiles::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 }
 

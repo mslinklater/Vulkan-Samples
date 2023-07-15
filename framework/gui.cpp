@@ -1,5 +1,5 @@
-/* Copyright (c) 2018-2022, Arm Limited and Contributors
- * Copyright (c) 2019-2022, Sascha Willems
+/* Copyright (c) 2018-2023, Arm Limited and Contributors
+ * Copyright (c) 2019-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -52,7 +52,7 @@ namespace
 void upload_draw_data(ImDrawData *draw_data, const uint8_t *vertex_data, const uint8_t *index_data)
 {
 	ImDrawVert *vtx_dst = (ImDrawVert *) vertex_data;
-	ImDrawIdx * idx_dst = (ImDrawIdx *) index_data;
+	ImDrawIdx  *idx_dst = (ImDrawIdx *) index_data;
 
 	for (int n = 0; n < draw_data->CmdListsCount; n++)
 	{
@@ -74,6 +74,8 @@ inline void reset_graph_max_value(StatGraphData &graph_data)
 	}
 }
 }        // namespace
+
+bool Gui::visible = true;
 
 const double Gui::press_time_ms = 200.0f;
 
@@ -337,7 +339,7 @@ void Gui::prepare(const VkPipelineCache pipeline_cache, const VkRenderPass rende
 	pipeline_create_info.pDynamicState       = &dynamic_state;
 	pipeline_create_info.stageCount          = static_cast<uint32_t>(shader_stages.size());
 	pipeline_create_info.pStages             = shader_stages.data();
-	pipeline_create_info.subpass             = 0;
+	pipeline_create_info.subpass             = subpass;
 
 	// Vertex bindings an attributes based on ImGui vertex definition
 	std::vector<VkVertexInputBindingDescription> vertex_input_bindings = {
@@ -655,7 +657,7 @@ void Gui::draw(VkCommandBuffer command_buffer)
 		return;
 	}
 
-	auto &      io            = ImGui::GetIO();
+	auto       &io            = ImGui::GetIO();
 	ImDrawData *draw_data     = ImGui::GetDrawData();
 	int32_t     vertex_offset = 0;
 	int32_t     index_offset  = 0;
@@ -748,10 +750,17 @@ bool Gui::is_debug_view_active() const
 	return debug_view.active;
 }
 
+void Gui::set_subpass(const uint32_t subpass)
+{
+	this->subpass = subpass;
+}
+
 Gui::StatsView::StatsView(const Stats *stats)
 {
 	if (stats == nullptr)
+	{
 		return;
+	}
 
 	// Request graph data information for each stat and record it in graph_map
 	const std::set<StatIndex> &indices = stats->get_requested_stats();
@@ -928,10 +937,10 @@ void Gui::show_stats(const Stats &stats)
 		assert(pr != stats_view.graph_map.end() && "StatIndex not implemented in gui graph_map");
 
 		// Draw graph
-		auto &      graph_data     = pr->second;
+		auto       &graph_data     = pr->second;
 		const auto &graph_elements = stats.get_data(stat_index);
 		float       graph_min      = 0.0f;
-		float &     graph_max      = graph_data.max_value;
+		float      &graph_max      = graph_data.max_value;
 
 		if (!graph_data.has_fixed_max)
 		{
@@ -1075,7 +1084,7 @@ bool Gui::input_event(const InputEvent &input_event)
 		}
 	}
 
-	// Toggle GUI elements when tap or clicking outside the GUI windows
+	// Toggle debug UI view when tap or clicking outside the GUI windows
 	if (!io.WantCaptureMouse)
 	{
 		bool press_down = (input_event.get_source() == EventSource::Mouse && static_cast<const MouseButtonInputEvent &>(input_event).get_action() == MouseAction::Down) || (input_event.get_source() == EventSource::Touchscreen && static_cast<const TouchInputEvent &>(input_event).get_action() == TouchAction::Down);
@@ -1101,11 +1110,7 @@ bool Gui::input_event(const InputEvent &input_event)
 				if (input_event.get_source() == EventSource::Mouse)
 				{
 					const auto &mouse_button = static_cast<const MouseButtonInputEvent &>(input_event);
-					if (mouse_button.get_button() == MouseButton::Left)
-					{
-						visible = !visible;
-					}
-					else if (mouse_button.get_button() == MouseButton::Right)
+					if (mouse_button.get_button() == MouseButton::Right)
 					{
 						debug_view.active = !debug_view.active;
 					}
@@ -1113,11 +1118,7 @@ bool Gui::input_event(const InputEvent &input_event)
 				else if (input_event.get_source() == EventSource::Touchscreen)
 				{
 					const auto &touch_event = static_cast<const TouchInputEvent &>(input_event);
-					if (!two_finger_tap && touch_event.get_touch_points() == 1)
-					{
-						visible = !visible;
-					}
-					else if (two_finger_tap && touch_event.get_touch_points() == 2)
+					if (two_finger_tap && touch_event.get_touch_points() == 2)
 					{
 						debug_view.active = !debug_view.active;
 					}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -24,9 +24,9 @@
 // Instantiate the default dispatcher
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-bool HPPApiVulkanSample::prepare(vkb::platform::HPPPlatform &platform)
+bool HPPApiVulkanSample::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!HPPVulkanSample::prepare(platform))
+	if (!HPPVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -47,7 +47,7 @@ bool HPPApiVulkanSample::prepare(vkb::platform::HPPPlatform &platform)
 	submit_info                   = vk::SubmitInfo();
 	submit_info.pWaitDstStageMask = &submit_pipeline_stages;
 
-	if (platform.get_window().get_window_mode() != vkb::Window::Mode::Headless)
+	if (window->get_window_mode() != vkb::Window::Mode::Headless)
 	{
 		submit_info.setWaitSemaphores(semaphores.acquired_image_ready);
 		submit_info.setSignalSemaphores(semaphores.render_complete);
@@ -66,13 +66,18 @@ bool HPPApiVulkanSample::prepare(vkb::platform::HPPPlatform &platform)
 
 	extent = get_render_context().get_surface_extent();
 
-	gui = std::make_unique<vkb::HPPGui>(*this, platform.get_window(), /*stats=*/nullptr, 15.0f, true);
+	prepare_gui();
+
+	return true;
+}
+
+void HPPApiVulkanSample::prepare_gui()
+{
+	gui = std::make_unique<vkb::HPPGui>(*this, *window, /*stats=*/nullptr, 15.0f, true);
 	gui->prepare(pipeline_cache,
 	             render_pass,
 	             {static_cast<VkPipelineShaderStageCreateInfo>(load_shader("uioverlay/uioverlay.vert", vk::ShaderStageFlagBits::eVertex)),
 	              static_cast<VkPipelineShaderStageCreateInfo>(load_shader("uioverlay/uioverlay.frag", vk::ShaderStageFlagBits::eFragment))});
-
-	return true;
 }
 
 void HPPApiVulkanSample::update(float delta_time)
@@ -91,8 +96,6 @@ void HPPApiVulkanSample::update(float delta_time)
 	{
 		view_updated = true;
 	}
-
-	get_platform().on_post_draw(get_render_context());
 }
 
 bool HPPApiVulkanSample::resize(const uint32_t, const uint32_t)
@@ -146,7 +149,7 @@ bool HPPApiVulkanSample::resize(const uint32_t, const uint32_t)
 
 	if (extent.width && extent.height)
 	{
-		camera.update_aspect_ratio((float) extent.width / (float) extent.height);
+		camera.update_aspect_ratio(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 	}
 
 	// Notify derived class
@@ -156,14 +159,14 @@ bool HPPApiVulkanSample::resize(const uint32_t, const uint32_t)
 	return true;
 }
 
-void HPPApiVulkanSample::create_render_context(vkb::platform::HPPPlatform const &platform)
+void HPPApiVulkanSample::create_render_context()
 {
 	// We always want an sRGB surface to match the display.
 	// If we used a UNORM surface, we'd have to do the conversion to sRGB ourselves at the end of our fragment shaders.
-	auto surface_priority_list = std::vector<vk::SurfaceFormatKHR>{{vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear},
+	auto surface_priority_list = std::vector<vk::SurfaceFormatKHR>{{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear},
 	                                                               {vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}};
 
-	render_context = platform.create_render_context(*device, surface, surface_priority_list);
+	HPPVulkanSample::create_render_context(surface_priority_list);
 }
 
 void HPPApiVulkanSample::prepare_render_context()
@@ -260,8 +263,8 @@ void HPPApiVulkanSample::input_event(const vkb::InputEvent &input_event)
 					int32_t eventX = static_cast<int32_t>(touch_event.get_pos_x());
 					int32_t eventY = static_cast<int32_t>(touch_event.get_pos_y());
 
-					float deltaX = (float) (touch_pos.y - eventY) * rotation_speed * 0.5f;
-					float deltaY = (float) (touch_pos.x - eventX) * rotation_speed * 0.5f;
+					float deltaX = static_cast<float>(touch_pos.y - eventY) * rotation_speed * 0.5f;
+					float deltaY = static_cast<float>(touch_pos.x - eventX) * rotation_speed * 0.5f;
 
 					camera.rotate(glm::vec3(deltaX, 0.0f, 0.0f));
 					camera.rotate(glm::vec3(0.0f, -deltaY, 0.0f));
@@ -299,6 +302,11 @@ void HPPApiVulkanSample::input_event(const vkb::InputEvent &input_event)
 					case vkb::KeyCode::P:
 						paused = !paused;
 						break;
+					case vkb::KeyCode::F1:
+						if (gui)
+						{
+							gui->visible = !gui->visible;
+						}
 					default:
 						break;
 				}
@@ -329,8 +337,8 @@ void HPPApiVulkanSample::input_event(const vkb::InputEvent &input_event)
 
 void HPPApiVulkanSample::handle_mouse_move(int32_t x, int32_t y)
 {
-	int32_t dx = (int32_t) mouse_pos.x - x;
-	int32_t dy = (int32_t) mouse_pos.y - y;
+	int32_t dx = static_cast<int32_t>(mouse_pos.x) - x;
+	int32_t dy = static_cast<int32_t>(mouse_pos.y) - y;
 
 	bool handled = false;
 
@@ -339,11 +347,11 @@ void HPPApiVulkanSample::handle_mouse_move(int32_t x, int32_t y)
 		ImGuiIO &io = ImGui::GetIO();
 		handled     = io.WantCaptureMouse;
 	}
-	mouse_moved((float) x, (float) y, handled);
+	mouse_moved(static_cast<float>(x), static_cast<float>(y), handled);
 
 	if (handled)
 	{
-		mouse_pos = glm::vec2((float) x, (float) y);
+		mouse_pos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
 		return;
 	}
 
@@ -367,7 +375,7 @@ void HPPApiVulkanSample::handle_mouse_move(int32_t x, int32_t y)
 		camera.translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
 		view_updated = true;
 	}
-	mouse_pos = glm::vec2((float) x, (float) y);
+	mouse_pos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
 }
 
 void HPPApiVulkanSample::mouse_moved(double x, double y, bool &handled)
@@ -450,17 +458,14 @@ void HPPApiVulkanSample::prepare_frame()
 		{
 			std::tie(result, current_buffer) = get_render_context().get_swapchain().acquire_next_image(semaphores.acquired_image_ready);
 		}
+		// Recreate the swapchain if it's no longer compatible with the surface (eErrorOutOfDateKHR)
+		// Don't catch other failures here, they are propagated up the calling hierarchy
 		catch (vk::OutOfDateKHRError & /*err*/)
-		{
-			result = vk::Result::eErrorOutOfDateKHR;
-		}
-
-		// Recreate the swapchain if it's no longer compatible with the surface (eErrorOutOfDateKHR) or no longer optimal for
-		// presentation (eSuboptimalKHR)
-		if ((result == vk::Result::eErrorOutOfDateKHR) || (result == vk::Result::eSuboptimalKHR))
 		{
 			resize(extent.width, extent.height);
 		}
+		// VK_SUBOPTIMAL_KHR is a success code and means that acquire was successful and semaphore is signaled but image is suboptimal
+		// allow rendering frame to suboptimal swapchain as otherwise we would have to manually unsignal semaphore and acquire image again
 	}
 }
 
@@ -481,7 +486,7 @@ void HPPApiVulkanSample::submit_frame()
 
 		vk::DisplayPresentInfoKHR disp_present_info;
 		if (device->is_extension_supported(VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME) &&
-		    get_platform().get_window().get_display_present_info(&disp_present_info, extent.width, extent.height))
+		    window->get_display_present_info(reinterpret_cast<VkDisplayPresentInfoKHR *>(&disp_present_info), extent.width, extent.height))
 		{
 			// Add display present info if supported and wanted
 			present_info.setPNext(&disp_present_info);
@@ -680,16 +685,16 @@ void HPPApiVulkanSample::setup_render_pass()
 	dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass      = 0;
 	dependencies[0].srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[0].dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependencies[0].srcAccessMask   = vk::AccessFlagBits::eMemoryRead;
-	dependencies[0].dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[0].dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
+	dependencies[0].srcAccessMask   = vk::AccessFlagBits::eNoneKHR;
+	dependencies[0].dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
 	dependencies[1].srcSubpass      = 0;
 	dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies[1].srcStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
 	dependencies[1].dstStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[1].srcAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[1].srcAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	dependencies[1].dstAccessMask   = vk::AccessFlagBits::eMemoryRead;
 	dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
@@ -744,16 +749,16 @@ void HPPApiVulkanSample::update_render_pass_flags(RenderPassCreateFlags flags)
 	dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass      = 0;
 	dependencies[0].srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[0].dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependencies[0].srcAccessMask   = vk::AccessFlagBits::eMemoryWrite;
-	dependencies[0].dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[0].dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
+	dependencies[0].srcAccessMask   = vk::AccessFlagBits::eNoneKHR;
+	dependencies[0].dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
 	dependencies[1].srcSubpass      = 0;
 	dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies[1].srcStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
 	dependencies[1].dstStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[1].srcAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[1].srcAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	dependencies[1].dstAccessMask   = vk::AccessFlagBits::eMemoryRead;
 	dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
@@ -940,7 +945,7 @@ HPPTexture HPPApiVulkanSample::load_texture_array(const std::string &file, vkb::
 	// Setup buffer copy regions for each mip level
 	std::vector<vk::BufferImageCopy> buffer_copy_regions;
 
-	auto &      mipmaps = texture.image->get_mipmaps();
+	auto       &mipmaps = texture.image->get_mipmaps();
 	const auto &layers  = texture.image->get_layers();
 
 	auto &offsets = texture.image->get_offsets();
@@ -1024,7 +1029,7 @@ HPPTexture HPPApiVulkanSample::load_texture_cubemap(const std::string &file, vkb
 	// Setup buffer copy regions for each mip level
 	std::vector<vk::BufferImageCopy> buffer_copy_regions;
 
-	auto &      mipmaps = texture.image->get_mipmaps();
+	auto       &mipmaps = texture.image->get_mipmaps();
 	const auto &layers  = texture.image->get_layers();
 
 	auto &offsets = texture.image->get_offsets();
@@ -1110,7 +1115,7 @@ void HPPApiVulkanSample::draw_model(std::unique_ptr<vkb::scene_graph::components
 	vk::DeviceSize offset = 0;
 
 	const auto &vertex_buffer = model->get_vertex_buffer("vertex_buffer");
-	auto &      index_buffer  = model->get_index_buffer();
+	auto       &index_buffer  = model->get_index_buffer();
 
 	command_buffer.bindVertexBuffers(0, vertex_buffer.get_handle(), offset);
 	command_buffer.bindIndexBuffer(index_buffer.get_handle(), 0, model->get_index_type());

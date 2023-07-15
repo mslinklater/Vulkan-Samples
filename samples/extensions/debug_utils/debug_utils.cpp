@@ -1,4 +1,4 @@
-/* Copyright (c) 2020-2022, Sascha Willems
+/* Copyright (c) 2020-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -66,7 +66,7 @@ DebugUtils::~DebugUtils()
 	}
 }
 
-/* 
+/*
  * Checks if the required extension is supported at instance level
  */
 void DebugUtils::debug_check_extension()
@@ -206,7 +206,7 @@ VkPipelineShaderStageCreateInfo DebugUtils::debug_load_shader(const std::string 
 
 	if (debug_utils_supported)
 	{
-		// Name the sader (by file name)
+		// Name the shader (by file name)
 		set_object_name(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t) shader_stage.module, std::string("Shader " + file).c_str());
 
 		std::vector<uint8_t> buffer = vkb::fs::read_shader_binary(file);
@@ -305,7 +305,7 @@ void DebugUtils::build_command_buffers()
 
 		{
 			/*
-				First pass: Render scene to offscreen framebuffer
+			    First pass: Render scene to offscreen framebuffer
 			*/
 
 			cmd_begin_label(draw_cmd_buffers[i], "Offscreen pass", {1.0f, 0.78f, 0.05f, 1.0f});
@@ -325,7 +325,7 @@ void DebugUtils::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) offscreen.width, (float) offscreen.height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(offscreen.width), static_cast<float>(offscreen.height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(offscreen.width, offscreen.height, 0, 0);
@@ -374,7 +374,7 @@ void DebugUtils::build_command_buffers()
 		}
 
 		/*
-			Second render pass: First bloom pass
+		    Second render pass: First bloom pass
 		*/
 		if (bloom)
 		{
@@ -397,7 +397,7 @@ void DebugUtils::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) filter_pass.width, (float) filter_pass.height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(filter_pass.width), static_cast<float>(filter_pass.height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(filter_pass.width, filter_pass.height, 0, 0);
@@ -414,11 +414,11 @@ void DebugUtils::build_command_buffers()
 		}
 
 		/*
-			Note: Synchronization between render passes is handled via sub pass dependencies.
+		    Note: Synchronization between render passes is handled via sub pass dependencies.
 		*/
 
 		/*
-			Third render pass: Scene rendering with applied second bloom pass (when enabled)
+		    Third render pass: Scene rendering with applied second bloom pass (when enabled)
 		*/
 		{
 			cmd_begin_label(draw_cmd_buffers[i], "Horizontal bloom pass and composition", {0.4f, 0.61f, 0.27f, 1.0f});
@@ -438,7 +438,7 @@ void DebugUtils::build_command_buffers()
 
 			vkCmdBeginRenderPass(draw_cmd_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-			VkViewport viewport = vkb::initializers::viewport((float) width, (float) height, 0.0f, 1.0f);
+			VkViewport viewport = vkb::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
 			vkCmdSetViewport(draw_cmd_buffers[i], 0, 1, &viewport);
 
 			VkRect2D scissor = vkb::initializers::rect2D(width, height, 0, 0);
@@ -542,7 +542,7 @@ void DebugUtils::prepare_offscreen_buffer()
 		// Depth attachment
 		create_attachment(depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &offscreen.depth);
 
-		// Set up separate renderpass with references to the colorand depth attachments
+		// Set up separate renderpass with references to the color and depth attachments
 		std::array<VkAttachmentDescription, 3> attachment_descriptions = {};
 
 		// Init attachment properties
@@ -654,7 +654,7 @@ void DebugUtils::prepare_offscreen_buffer()
 		// Two color buffers
 		create_attachment(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &filter_pass.color[0]);
 
-		// Set up separate renderpass with references to the colorand depth attachments
+		// Set up separate renderpass with references to the color and depth attachments
 		std::array<VkAttachmentDescription, 1> attachment_descriptions = {};
 
 		// Init attachment properties
@@ -889,7 +889,7 @@ void DebugUtils::prepare_pipelines()
 	        1,
 	        &blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state =
 	    vkb::initializers::pipeline_depth_stencil_state_create_info(
 	        VK_FALSE,
@@ -1055,9 +1055,9 @@ void DebugUtils::draw()
 	queue_end_label(queue);
 }
 
-bool DebugUtils::prepare(vkb::Platform &platform)
+bool DebugUtils::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!ApiVulkanSample::prepare(platform))
+	if (!ApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -1066,8 +1066,8 @@ bool DebugUtils::prepare(vkb::Platform &platform)
 	camera.set_position(glm::vec3(0.0f, 0.0f, -6.0f));
 	camera.set_rotation(glm::vec3(0.0f, 180.0f, 0.0f));
 
-	// Note: Using Revsered depth-buffer for increased precision, so Znear and Zfar are flipped
-	camera.set_perspective(60.0f, (float) width / (float) height, 256.0f, 0.1f);
+	// Note: Using reversed depth-buffer for increased precision, so Znear and Zfar are flipped
+	camera.set_perspective(60.0f, static_cast<float>(width) / static_cast<float>(height), 256.0f, 0.1f);
 
 	debug_check_extension();
 	load_assets();
@@ -1086,10 +1086,14 @@ bool DebugUtils::prepare(vkb::Platform &platform)
 void DebugUtils::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 	if (camera.updated)
+	{
 		update_uniform_buffers();
+	}
 }
 
 void DebugUtils::on_update_ui_overlay(vkb::Drawer &drawer)

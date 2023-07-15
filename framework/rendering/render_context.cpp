@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2022, Arm Limited and Contributors
+/* Copyright (c) 2019-2023, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -23,11 +23,13 @@ namespace vkb
 {
 VkFormat RenderContext::DEFAULT_VK_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
 
-RenderContext::RenderContext(Device &device, VkSurfaceKHR surface, const Window &window) :
-    device{device},
-    window{window},
-    queue{device.get_suitable_graphics_queue()},
-    surface_extent{window.get_extent().width, window.get_extent().height}
+RenderContext::RenderContext(Device                                &device,
+                             VkSurfaceKHR                           surface,
+                             const Window                          &window,
+                             VkPresentModeKHR                       present_mode,
+                             const std::vector<VkPresentModeKHR>   &present_mode_priority_list,
+                             const std::vector<VkSurfaceFormatKHR> &surface_format_priority_list) :
+    device{device}, window{window}, queue{device.get_suitable_graphics_queue()}, surface_extent{window.get_extent().width, window.get_extent().height}
 {
 	if (surface != VK_NULL_HANDLE)
 	{
@@ -38,30 +40,12 @@ RenderContext::RenderContext(Device &device, VkSurfaceKHR surface, const Window 
 
 		if (surface_properties.currentExtent.width == 0xFFFFFFFF)
 		{
-			swapchain = std::make_unique<Swapchain>(device, surface, surface_extent);
+			swapchain = std::make_unique<Swapchain>(device, surface, present_mode, present_mode_priority_list, surface_format_priority_list, surface_extent);
 		}
 		else
 		{
-			swapchain = std::make_unique<Swapchain>(device, surface);
+			swapchain = std::make_unique<Swapchain>(device, surface, present_mode, present_mode_priority_list, surface_format_priority_list);
 		}
-	}
-}
-
-void RenderContext::request_present_mode(const VkPresentModeKHR present_mode)
-{
-	if (swapchain)
-	{
-		auto &properties        = swapchain->get_properties();
-		properties.present_mode = present_mode;
-	}
-}
-
-void RenderContext::request_image_format(const VkFormat format)
-{
-	if (swapchain)
-	{
-		auto &properties                 = swapchain->get_properties();
-		properties.surface_format.format = format;
 	}
 }
 
@@ -71,10 +55,6 @@ void RenderContext::prepare(size_t thread_count, RenderTarget::CreateFunc create
 
 	if (swapchain)
 	{
-		swapchain->set_present_mode_priority(present_mode_priority_list);
-		swapchain->set_surface_format_priority(surface_format_priority_list);
-		swapchain->create();
-
 		surface_extent = swapchain->get_extent();
 
 		VkExtent3D extent{surface_extent.width, surface_extent.height, 1};
@@ -108,18 +88,6 @@ void RenderContext::prepare(size_t thread_count, RenderTarget::CreateFunc create
 	this->create_render_target_func = create_render_target_func;
 	this->thread_count              = thread_count;
 	this->prepared                  = true;
-}
-
-void RenderContext::set_present_mode_priority(const std::vector<VkPresentModeKHR> &new_present_mode_priority_list)
-{
-	assert(!new_present_mode_priority_list.empty() && "Priority list must not be empty");
-	present_mode_priority_list = new_present_mode_priority_list;
-}
-
-void RenderContext::set_surface_format_priority(const std::vector<VkSurfaceFormatKHR> &new_surface_format_priority_list)
-{
-	assert(!new_surface_format_priority_list.empty() && "Priority list must not be empty");
-	surface_format_priority_list = new_surface_format_priority_list;
 }
 
 VkFormat RenderContext::get_format() const
@@ -331,7 +299,8 @@ void RenderContext::begin_frame()
 
 	assert(!frame_active && "Frame is still active, please call end_frame");
 
-	auto &prev_frame = *frames.at(active_frame_index);
+	assert(active_frame_index < frames.size());
+	auto &prev_frame = *frames[active_frame_index];
 
 	// We will use the acquired semaphore in a different frame context,
 	// so we need to hold ownership.
@@ -471,7 +440,8 @@ VkSemaphore RenderContext::consume_acquired_semaphore()
 RenderFrame &RenderContext::get_active_frame()
 {
 	assert(frame_active && "Frame is not active, please call begin_frame");
-	return *frames.at(active_frame_index);
+	assert(active_frame_index < frames.size());
+	return *frames[active_frame_index];
 }
 
 uint32_t RenderContext::get_active_frame_index()
@@ -483,7 +453,8 @@ uint32_t RenderContext::get_active_frame_index()
 RenderFrame &RenderContext::get_last_rendered_frame()
 {
 	assert(!frame_active && "Frame is still active, please call end_frame");
-	return *frames.at(active_frame_index);
+	assert(active_frame_index < frames.size());
+	return *frames[active_frame_index];
 }
 
 VkSemaphore RenderContext::request_semaphore()

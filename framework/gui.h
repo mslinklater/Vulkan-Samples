@@ -1,5 +1,5 @@
-/* Copyright (c) 2018-2021, Arm Limited and Contributors
- * Copyright (c) 2019-2021, Sascha Willems
+/* Copyright (c) 2018-2023, Arm Limited and Contributors
+ * Copyright (c) 2019-2023, Sascha Willems
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -83,12 +83,12 @@ class Drawer
   public:
 	Drawer() = default;
 
-	/** 
+	/**
 	 * @brief Clears the dirty bit set
 	 */
 	void clear();
 
-	/** 
+	/**
 	 * @brief Returns true if the drawer has been updated
 	 */
 	bool is_dirty();
@@ -239,6 +239,9 @@ class Gui
 		glm::vec2 translate;
 	} push_const_block;
 
+	/// Used to show/hide the GUI
+	static bool visible;
+
 	/**
 	 * @brief Initializes the Gui
 	 * @param sample A vulkan render context
@@ -346,6 +349,8 @@ class Gui
 
 	bool is_debug_view_active() const;
 
+	void set_subpass(const uint32_t subpass);
+
   private:
 	/**
 	 * @brief Block size of a buffer pool in kilobytes
@@ -412,15 +417,14 @@ class Gui
 	/// Used to measure duration of input events
 	Timer timer;
 
-	/// Used to show/hide the GUI
-	bool visible{true};
-
 	bool prev_visible{true};
 
 	/// Whether or not the GUI has detected a multi touch gesture
 	bool two_finger_tap = false;
 
 	bool show_graph_file_output = false;
+
+	uint32_t subpass = 0;
 };
 
 void Gui::new_frame()

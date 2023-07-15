@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2022-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -22,11 +22,11 @@ namespace vkb
 {
 namespace core
 {
-HPPCommandPool::HPPCommandPool(HPPDevice const &                     d,
-                               uint32_t                              queue_family_index,
-                               vkb::rendering::HPPRenderFrame const *render_frame,
-                               size_t                                thread_index,
-                               HPPCommandBuffer::ResetMode           reset_mode) :
+HPPCommandPool::HPPCommandPool(HPPDevice                      &d,
+                               uint32_t                        queue_family_index,
+                               vkb::rendering::HPPRenderFrame *render_frame,
+                               size_t                          thread_index,
+                               HPPCommandBuffer::ResetMode     reset_mode) :
     device{d}, render_frame{render_frame}, thread_index{thread_index}, reset_mode{reset_mode}
 {
 	vk::CommandPoolCreateFlags flags;
@@ -74,7 +74,7 @@ HPPCommandPool::~HPPCommandPool()
 	}
 }
 
-HPPDevice const &HPPCommandPool::get_device() const
+HPPDevice &HPPCommandPool::get_device()
 {
 	return device;
 }
@@ -89,7 +89,7 @@ uint32_t HPPCommandPool::get_queue_family_index() const
 	return queue_family_index;
 }
 
-vkb::rendering::HPPRenderFrame const *HPPCommandPool::get_render_frame() const
+vkb::rendering::HPPRenderFrame *HPPCommandPool::get_render_frame()
 {
 	return render_frame;
 }
@@ -124,7 +124,7 @@ void HPPCommandPool::reset_pool()
 	}
 }
 
-HPPCommandBuffer const &HPPCommandPool::request_command_buffer(vk::CommandBufferLevel level)
+HPPCommandBuffer &HPPCommandPool::request_command_buffer(vk::CommandBufferLevel level)
 {
 	if (level == vk::CommandBufferLevel::ePrimary)
 	{

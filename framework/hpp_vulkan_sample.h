@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <platform/hpp_application.h>
+#include <platform/application.h>
 
 #include <core/hpp_command_buffer.h>
 #include <core/hpp_device.h>
@@ -36,7 +36,7 @@ class HPPGui;
  *
  * See vkb::VulkanSample for documentation
  */
-class HPPVulkanSample : public vkb::platform::HPPApplication
+class HPPVulkanSample : public vkb::Application
 {
   public:
 	HPPVulkanSample() = default;
@@ -46,7 +46,7 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 	/**
 	 * @brief Additional sample initialization
 	 */
-	bool prepare(vkb::platform::HPPPlatform &platform) override;
+	bool prepare(const vkb::ApplicationOptions &options) override;
 
 	/**
 	 * @brief Main loop sample events
@@ -59,7 +59,7 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 
 	void finish() override;
 
-	/** 
+	/**
 	 * @brief Loads the scene
 	 *
 	 * @param path The path of the glTF file
@@ -72,6 +72,11 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 
 	std::unique_ptr<vkb::core::HPPDevice> const &get_device() const;
 
+	inline bool has_render_context() const
+	{
+		return render_context != nullptr;
+	}
+
 	vkb::rendering::HPPRenderContext &get_render_context();
 
 	void set_render_pipeline(vkb::rendering::HPPRenderPipeline &&render_pipeline);
@@ -80,7 +85,7 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 
 	Configuration &get_configuration();
 
-	sg::Scene const &get_scene() const;
+	sg::Scene &get_scene();
 
 	bool has_scene() const;
 
@@ -197,12 +202,12 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 	 */
 	virtual void request_gpu_features(vkb::core::HPPPhysicalDevice &gpu);
 
-	/** 
+	/**
 	 * @brief Override this to customise the creation of the render_context
 	 */
-	virtual void create_render_context(vkb::platform::HPPPlatform const &platform);
+	virtual void create_render_context();
 
-	/** 
+	/**
 	 * @brief Override this to customise the creation of the swapchain and render_context
 	 */
 	virtual void prepare_render_context();
@@ -252,6 +257,8 @@ class HPPVulkanSample : public vkb::platform::HPPApplication
 	{
 		high_priority_graphics_queue = enable;
 	}
+
+	void create_render_context(const std::vector<vk::SurfaceFormatKHR> &surface_priority_list);
 
   private:
 	/** @brief Set of device extensions to be enabled for this example and whether they are optional (must be set in the derived constructor) */

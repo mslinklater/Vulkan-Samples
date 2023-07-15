@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,9 +17,10 @@
 
 #pragma once
 
-#include <rendering/render_frame.h>
-
+#include "rendering/render_frame.h"
+#include <core/hpp_command_buffer.h>
 #include <core/hpp_queue.h>
+#include <hpp_buffer_pool.h>
 #include <rendering/hpp_render_target.h>
 
 namespace vkb
@@ -42,6 +43,12 @@ class HPPRenderFrame : private vkb::RenderFrame
 	                thread_count)
 	{}
 
+	vkb::HPPBufferAllocation allocate_buffer(vk::BufferUsageFlags usage, vk::DeviceSize size, size_t thread_index = 0)
+	{
+		vkb::BufferAllocation allocation = vkb::RenderFrame::allocate_buffer(static_cast<VkBufferUsageFlags>(usage), static_cast<VkDeviceSize>(size), thread_index);
+		return std::move(*reinterpret_cast<vkb::HPPBufferAllocation *>(&allocation));
+	}
+
 	HPPRenderTarget &get_render_target()
 	{
 		return reinterpret_cast<HPPRenderTarget &>(vkb::RenderFrame::get_render_target());
@@ -52,7 +59,7 @@ class HPPRenderFrame : private vkb::RenderFrame
 		vkb::RenderFrame::release_owned_semaphore(static_cast<VkSemaphore>(semaphore));
 	}
 
-	vkb::core::HPPCommandBuffer &request_command_buffer(const vkb::core::HPPQueue &            queue,
+	vkb::core::HPPCommandBuffer &request_command_buffer(const vkb::core::HPPQueue             &queue,
 	                                                    vkb::core::HPPCommandBuffer::ResetMode reset_mode   = vkb::core::HPPCommandBuffer::ResetMode::ResetPool,
 	                                                    vk::CommandBufferLevel                 level        = vk::CommandBufferLevel::ePrimary,
 	                                                    size_t                                 thread_index = 0)
@@ -62,6 +69,19 @@ class HPPRenderFrame : private vkb::RenderFrame
 		                                             static_cast<vkb::CommandBuffer::ResetMode>(reset_mode),
 		                                             static_cast<VkCommandBufferLevel>(level),
 		                                             thread_index));
+	}
+
+	vk::DescriptorSet request_descriptor_set(const vkb::core::HPPDescriptorSetLayout    &descriptor_set_layout,
+	                                         const BindingMap<vk::DescriptorBufferInfo> &buffer_infos,
+	                                         const BindingMap<vk::DescriptorImageInfo>  &image_infos,
+	                                         bool                                        update_after_bind,
+	                                         size_t                                      thread_index = 0)
+	{
+		return static_cast<vk::DescriptorSet>(vkb::RenderFrame::request_descriptor_set(reinterpret_cast<vkb::DescriptorSetLayout const &>(descriptor_set_layout),
+		                                                                               reinterpret_cast<BindingMap<VkDescriptorBufferInfo> const &>(buffer_infos),
+		                                                                               reinterpret_cast<BindingMap<VkDescriptorImageInfo> const &>(image_infos),
+		                                                                               update_after_bind,
+		                                                                               thread_index));
 	}
 
 	vk::Fence request_fence()

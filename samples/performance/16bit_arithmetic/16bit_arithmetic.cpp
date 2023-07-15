@@ -1,4 +1,4 @@
-/* Copyright (c) 2020-2021, Arm Limited and Contributors
+/* Copyright (c) 2020-2023, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,7 +16,7 @@
  */
 
 #include "16bit_arithmetic.h"
-#include "platform/platform.h"
+
 #include "stats/stats.h"
 #include <random>
 #include <scene_graph/components/camera.h>
@@ -45,9 +45,9 @@ KHR16BitArithmeticSample::KHR16BitArithmeticSample()
 	config.insert<vkb::BoolSetting>(1, khr_16bit_arith_enabled, true);
 }
 
-bool KHR16BitArithmeticSample::prepare(vkb::Platform &platform)
+bool KHR16BitArithmeticSample::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!VulkanSample::prepare(platform))
+	if (!VulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -55,7 +55,7 @@ bool KHR16BitArithmeticSample::prepare(vkb::Platform &platform)
 	// Normally, we should see the immediate effect on frame times,
 	// but if we're somehow hitting 60 FPS, GPU cycles / s should go down while hitting vsync.
 	stats->request_stats({vkb::StatIndex::gpu_cycles, vkb::StatIndex::frame_times});
-	gui = std::make_unique<vkb::Gui>(*this, platform.get_window(), stats.get());
+	gui = std::make_unique<vkb::Gui>(*this, *window, stats.get());
 
 	// Set up some structs for the (color, depth) attachments in the default render pass.
 	load_store_infos.resize(2);
@@ -157,7 +157,7 @@ bool KHR16BitArithmeticSample::prepare(vkb::Platform &platform)
 		}
 
 		const char *shader = "16bit_arithmetic/compute_buffer_fp16.comp";
-		auto &      module_fp16 =
+		auto       &module_fp16 =
 		    device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_COMPUTE_BIT,
 		                                                      vkb::ShaderSource{shader}, variant);
 		compute_layout_fp16 = &device.get_resource_cache().request_pipeline_layout({&module_fp16});
@@ -211,9 +211,9 @@ void KHR16BitArithmeticSample::VisualizationSubpass::draw(vkb::CommandBuffer &co
 
 void KHR16BitArithmeticSample::VisualizationSubpass::prepare()
 {
-	auto &                           device             = get_render_context().get_device();
-	auto &                           vert_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_VERTEX_BIT, get_vertex_shader());
-	auto &                           frag_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_FRAGMENT_BIT, get_fragment_shader());
+	auto                            &device             = get_render_context().get_device();
+	auto                            &vert_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_VERTEX_BIT, get_vertex_shader());
+	auto                            &frag_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_FRAGMENT_BIT, get_fragment_shader());
 	std::vector<vkb::ShaderModule *> shader_modules{&vert_shader_module, &frag_shader_module};
 	layout = &device.get_resource_cache().request_pipeline_layout(shader_modules);
 }
@@ -274,7 +274,7 @@ void KHR16BitArithmeticSample::draw_renderpass(vkb::CommandBuffer &command_buffe
 	} push32 = {};
 
 	frame_count      = (frame_count + 1u) & 511u;
-	float seed_value = 0.5f * glm::sin(glm::two_pi<float>() * (float(frame_count) / 512.0f));
+	float seed_value = 0.5f * glm::sin(glm::two_pi<float>() * (static_cast<float>(frame_count) / 512.0f));
 
 	push32.num_blobs = NumBlobs;
 	push32.fp32_seed = seed_value;
@@ -311,7 +311,7 @@ void KHR16BitArithmeticSample::draw_renderpass(vkb::CommandBuffer &command_buffe
 
 	// Blit result to screen and render UI.
 	command_buffer.begin_render_pass(render_target, load_store_infos, clear_values, subpasses);
-	command_buffer.set_viewport(0, {{0.0f, 0.0f, float(render_target.get_extent().width), float(render_target.get_extent().height), 0.0f, 1.0f}});
+	command_buffer.set_viewport(0, {{0.0f, 0.0f, static_cast<float>(render_target.get_extent().width), static_cast<float>(render_target.get_extent().height), 0.0f, 1.0f}});
 	command_buffer.set_scissor(0, {{{0, 0}, render_target.get_extent()}});
 	subpasses.front()->draw(command_buffer);
 

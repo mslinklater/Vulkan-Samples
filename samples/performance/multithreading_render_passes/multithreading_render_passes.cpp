@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, Arm Limited and Contributors
+/* Copyright (c) 2020-2023, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -21,7 +21,7 @@
 #include "gltf_loader.h"
 #include "gui.h"
 #include "platform/filesystem.h"
-#include "platform/platform.h"
+
 #include "scene_graph/components/material.h"
 #include "scene_graph/components/mesh.h"
 #include "scene_graph/components/orthographic_camera.h"
@@ -39,9 +39,9 @@ MultithreadingRenderPasses::MultithreadingRenderPasses()
 	config.insert<vkb::IntSetting>(2, multithreading_mode, 2);
 }
 
-bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
+bool MultithreadingRenderPasses::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!VulkanSample::prepare(platform))
+	if (!VulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -75,7 +75,7 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 
 	// Add a GUI with the stats you want to monitor
 	stats->request_stats({vkb::StatIndex::frame_times, vkb::StatIndex::cpu_cycles});
-	gui = std::make_unique<vkb::Gui>(*this, platform.get_window(), stats.get());
+	gui = std::make_unique<vkb::Gui>(*this, *window, stats.get());
 
 	return true;
 }
@@ -322,7 +322,8 @@ void MultithreadingRenderPasses::record_main_pass_image_memory_barriers(vkb::Com
 		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-		command_buffer.image_memory_barrier(views.at(swapchain_attachment_index), memory_barrier);
+		assert(swapchain_attachment_index < views.size());
+		command_buffer.image_memory_barrier(views[swapchain_attachment_index], memory_barrier);
 	}
 
 	{
@@ -334,11 +335,13 @@ void MultithreadingRenderPasses::record_main_pass_image_memory_barriers(vkb::Com
 		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
-		command_buffer.image_memory_barrier(views.at(depth_attachment_index), memory_barrier);
+		assert(depth_attachment_index < views.size());
+		command_buffer.image_memory_barrier(views[depth_attachment_index], memory_barrier);
 	}
 
 	{
-		auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views().at(shadowmap_attachment_index);
+		assert(shadowmap_attachment_index < shadow_render_targets[render_context->get_active_frame_index()]->get_views().size());
+		auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views()[shadowmap_attachment_index];
 
 		vkb::ImageMemoryBarrier memory_barrier{};
 		memory_barrier.old_layout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -354,7 +357,8 @@ void MultithreadingRenderPasses::record_main_pass_image_memory_barriers(vkb::Com
 
 void MultithreadingRenderPasses::record_shadow_pass_image_memory_barrier(vkb::CommandBuffer &command_buffer)
 {
-	auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views().at(shadowmap_attachment_index);
+	assert(shadowmap_attachment_index < shadow_render_targets[render_context->get_active_frame_index()]->get_views().size());
+	auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views()[shadowmap_attachment_index];
 
 	vkb::ImageMemoryBarrier memory_barrier{};
 	memory_barrier.old_layout      = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -378,7 +382,8 @@ void MultithreadingRenderPasses::record_present_image_memory_barrier(vkb::Comman
 	memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-	command_buffer.image_memory_barrier(views.at(swapchain_attachment_index), memory_barrier);
+	assert(swapchain_attachment_index < views.size());
+	command_buffer.image_memory_barrier(views[swapchain_attachment_index], memory_barrier);
 }
 
 void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_buffer)
@@ -431,12 +436,12 @@ void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buff
 	}
 }
 
-MultithreadingRenderPasses::MainSubpass::MainSubpass(vkb::RenderContext &                             render_context,
-                                                     vkb::ShaderSource &&                             vertex_source,
-                                                     vkb::ShaderSource &&                             fragment_source,
-                                                     vkb::sg::Scene &                                 scene,
-                                                     vkb::sg::Camera &                                camera,
-                                                     vkb::sg::Camera &                                shadowmap_camera,
+MultithreadingRenderPasses::MainSubpass::MainSubpass(vkb::RenderContext                              &render_context,
+                                                     vkb::ShaderSource                              &&vertex_source,
+                                                     vkb::ShaderSource                              &&fragment_source,
+                                                     vkb::sg::Scene                                  &scene,
+                                                     vkb::sg::Camera                                 &camera,
+                                                     vkb::sg::Camera                                 &shadowmap_camera,
                                                      std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets) :
     shadowmap_camera{shadowmap_camera},
     shadow_render_targets{shadow_render_targets},
@@ -471,9 +476,10 @@ void MultithreadingRenderPasses::MainSubpass::draw(vkb::CommandBuffer &command_b
 
 	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
 	// Bind the shadowmap texture to the proper set nd binding in shader
-	command_buffer.bind_image(shadow_render_target.get_views().at(0), *shadowmap_sampler, 0, 5, 0);
+	assert(!shadow_render_target.get_views().empty());
+	command_buffer.bind_image(shadow_render_target.get_views()[0], *shadowmap_sampler, 0, 5, 0);
 
-	auto &                render_frame  = get_render_context().get_active_frame();
+	auto                 &render_frame  = get_render_context().get_active_frame();
 	vkb::BufferAllocation shadow_buffer = render_frame.allocate_buffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(glm::mat4));
 	shadow_buffer.update(shadow_uniform);
 	// Bind the shadowmap uniform to the proper set nd binding in shader
@@ -485,8 +491,8 @@ void MultithreadingRenderPasses::MainSubpass::draw(vkb::CommandBuffer &command_b
 MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &render_context,
                                                          vkb::ShaderSource &&vertex_source,
                                                          vkb::ShaderSource &&fragment_source,
-                                                         vkb::sg::Scene &    scene,
-                                                         vkb::sg::Camera &   camera) :
+                                                         vkb::sg::Scene     &scene,
+                                                         vkb::sg::Camera    &camera) :
     vkb::GeometrySubpass{render_context, std::move(vertex_source), std::move(fragment_source), scene, camera}
 {
 }
@@ -494,7 +500,7 @@ MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &ren
 void MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_state(vkb::CommandBuffer &command_buffer, VkFrontFace front_face, bool double_sided_material)
 {
 	// Enabling depth bias to get rid of self-shadowing artifacts
-	// Depth bias leterally "pushes" slightly all the primitives further away from the camera taking their slope into account
+	// Depth bias literally "pushes" slightly all the primitives further away from the camera taking their slope into account
 	// It helps to avoid precision related problems while doing depth comparisons in the final pass
 	vkb::RasterizationState rasterization_state{};
 	rasterization_state.front_face        = front_face;
@@ -516,7 +522,8 @@ void MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_state(vkb::Comm
 vkb::PipelineLayout &MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_layout(vkb::CommandBuffer &command_buffer, const std::vector<vkb::ShaderModule *> &shader_modules)
 {
 	// Only vertex shader is needed in the shadow subpass
-	auto vertex_shader_module = shader_modules.at(0);
+	assert(!shader_modules.empty());
+	auto vertex_shader_module = shader_modules[0];
 
 	vertex_shader_module->set_resource_mode("GlobalUniform", vkb::ShaderResourceMode::Dynamic);
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -61,21 +61,21 @@ void HPPTextureLoading::request_gpu_features(vkb::core::HPPPhysicalDevice &gpu)
 }
 
 /*
-	Upload texture image data to the GPU
+    Upload texture image data to the GPU
 
-	Vulkan offers two types of image tiling (memory layout):
+    Vulkan offers two types of image tiling (memory layout):
 
-	Linear tiled images:
-		These are stored as is and can be copied directly to. But due to the linear nature they're not a good match for GPUs and format and feature support is very limited.
-		It's not advised to use linear tiled images for anything else than copying from host to GPU if buffer copies are not an option.
-		Linear tiling is thus only implemented for learning purposes, one should always prefer optimal tiled image.
+    Linear tiled images:
+        These are stored as is and can be copied directly to. But due to the linear nature they're not a good match for GPUs and format and feature support is very limited.
+        It's not advised to use linear tiled images for anything else than copying from host to GPU if buffer copies are not an option.
+        Linear tiling is thus only implemented for learning purposes, one should always prefer optimal tiled image.
 
-	Optimal tiled images:
-		These are stored in an implementation specific layout matching the capability of the hardware. They usually support more formats and features and are much faster.
-		Optimal tiled images are stored on the device and not accessible by the host. So they can't be written directly to (like liner tiled images) and always require 
-		some sort of data copy, either from a buffer or	a linear tiled image.
-		
-	In Short: Always use optimal tiled images for rendering.
+    Optimal tiled images:
+        These are stored in an implementation specific layout matching the capability of the hardware. They usually support more formats and features and are much faster.
+        Optimal tiled images are stored on the device and not accessible by the host. So they can't be written directly to (like liner tiled images) and always require
+        some sort of data copy, either from a buffer or	a linear tiled image.
+
+    In Short: Always use optimal tiled images for rendering.
 */
 void HPPTextureLoading::load_texture()
 {
@@ -84,7 +84,7 @@ void HPPTextureLoading::load_texture()
 	// ktx1 doesn't know whether the content is sRGB or linear, but most tools save in sRGB, so assume that.
 	vk::Format format = vk::Format::eR8G8B8A8Srgb;
 
-	ktxTexture *   ktx_texture;
+	ktxTexture    *ktx_texture;
 	KTX_error_code result = ktxTexture_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
 	if ((result != KTX_SUCCESS) || (ktx_texture == nullptr))
 	{
@@ -103,7 +103,7 @@ void HPPTextureLoading::load_texture()
 	if (force_linear_tiling)
 	{
 		// Don't use linear if format is not supported for (linear) shader sampling
-		// Get device properites for the requested texture format
+		// Get device properties for the requested texture format
 		vk::FormatProperties format_properties = get_device()->get_gpu().get_handle().getFormatProperties(format);
 		use_staging                            = !(format_properties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage);
 	}
@@ -168,9 +168,9 @@ void HPPTextureLoading::load_texture()
 
 		memory_requirements   = get_device()->get_handle().getImageMemoryRequirements(texture.image);
 		memory_allocate_info  = {memory_requirements.size,
-                                get_device()->get_gpu().get_memory_type(memory_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)};
+		                         get_device()->get_gpu().get_memory_type(memory_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)};
 		texture.device_memory = get_device()->get_handle().allocateMemory(memory_allocate_info);
-		VK_CHECK(vkBindImageMemory(get_device()->get_handle(), texture.image, texture.device_memory, 0));
+		get_device()->get_handle().bindImageMemory(texture.image, texture.device_memory, 0);
 
 		vk::CommandBuffer copy_command = get_device()->create_command_buffer(vk::CommandBufferLevel::ePrimary, true);
 
@@ -199,8 +199,8 @@ void HPPTextureLoading::load_texture()
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage is host write/read exection (VK_PIPELINE_STAGE_HOST_BIT)
-		// Destination pipeline stage is copy command exection (VK_PIPELINE_STAGE_TRANSFER_BIT)
+		// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
+		// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		copy_command.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, {}, nullptr, nullptr, image_memory_barrier);
 
 		// Copy mip levels from staging buffer
@@ -213,7 +213,7 @@ void HPPTextureLoading::load_texture()
 		image_memory_barrier.newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage stage is copy command exection (VK_PIPELINE_STAGE_TRANSFER_BIT)
+		// Source pipeline stage stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 		copy_command.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, nullptr, nullptr, image_memory_barrier);
 
@@ -223,8 +223,8 @@ void HPPTextureLoading::load_texture()
 		get_device()->flush_command_buffer(copy_command, queue, true);
 
 		// Clean up staging resources
-		get_device()->get_handle().freeMemory(staging_memory);
 		get_device()->get_handle().destroyBuffer(staging_buffer);
+		get_device()->get_handle().freeMemory(staging_memory);
 	}
 	else
 	{
@@ -283,7 +283,7 @@ void HPPTextureLoading::load_texture()
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
 		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
-		// Source pipeline stage is host write/read exection (VK_PIPELINE_STAGE_HOST_BIT)
+		// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 		// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 		copy_command.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eFragmentShader, {}, nullptr, nullptr, image_memory_barrier);
 
@@ -305,7 +305,7 @@ void HPPTextureLoading::load_texture()
 	sampler.compareOp    = vk::CompareOp::eNever;
 	sampler.minLod       = 0.0f;
 	// Set max level-of-detail to mip level count of the texture
-	sampler.maxLod        = (use_staging) ? (float) texture.mip_levels : 0.0f;
+	sampler.maxLod        = (use_staging) ? static_cast<float>(texture.mip_levels) : 0.0f;
 	sampler.maxAnisotropy = 1.0f;
 	// Enable anisotropic filtering
 	// This feature is optional, so we must check if it's supported on the device
@@ -407,7 +407,7 @@ void HPPTextureLoading::draw()
 {
 	HPPApiVulkanSample::prepare_frame();
 
-	// Command buffer to be sumitted to the queue
+	// Command buffer to be submitted to the queue
 	submit_info.setCommandBuffers(draw_cmd_buffers[current_buffer]);
 
 	// Submit to queue
@@ -515,7 +515,7 @@ void HPPTextureLoading::prepare_pipeline()
 
 	vk::PipelineColorBlendStateCreateInfo color_blend_state({}, {}, {}, blend_attachment_state);
 
-	// Note: Using Reversed depth-buffer for increased precision, so Greater depth values are kept
+	// Note: Using reversed depth-buffer for increased precision, so Greater depth values are kept
 	vk::PipelineDepthStencilStateCreateInfo depth_stencil_state;
 	depth_stencil_state.depthTestEnable  = true;
 	depth_stencil_state.depthWriteEnable = true;
@@ -575,7 +575,7 @@ void HPPTextureLoading::prepare_uniform_buffers()
 void HPPTextureLoading::update_uniform_buffers()
 {
 	// Vertex shader
-	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), (float) extent.width / (float) extent.height, 0.001f, 256.0f);
+	ubo_vs.projection     = glm::perspective(glm::radians(60.0f), static_cast<float>(extent.width) / static_cast<float>(extent.height), 0.001f, 256.0f);
 	glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, zoom));
 
 	ubo_vs.model = view_matrix * glm::translate(glm::mat4(1.0f), camera_pos);
@@ -588,9 +588,9 @@ void HPPTextureLoading::update_uniform_buffers()
 	uniform_buffer_vs->convert_and_update(ubo_vs);
 }
 
-bool HPPTextureLoading::prepare(vkb::platform::HPPPlatform &platform)
+bool HPPTextureLoading::prepare(const vkb::ApplicationOptions &options)
 {
-	if (!HPPApiVulkanSample::prepare(platform))
+	if (!HPPApiVulkanSample::prepare(options))
 	{
 		return false;
 	}
@@ -609,7 +609,9 @@ bool HPPTextureLoading::prepare(vkb::platform::HPPPlatform &platform)
 void HPPTextureLoading::render(float delta_time)
 {
 	if (!prepared)
+	{
 		return;
+	}
 	draw();
 }
 
@@ -622,7 +624,7 @@ void HPPTextureLoading::on_update_ui_overlay(vkb::HPPDrawer &drawer)
 {
 	if (drawer.header("Settings"))
 	{
-		if (drawer.slider_float("LOD bias", &ubo_vs.lod_bias, 0.0f, (float) texture.mip_levels))
+		if (drawer.slider_float("LOD bias", &ubo_vs.lod_bias, 0.0f, static_cast<float>(texture.mip_levels)))
 		{
 			update_uniform_buffers();
 		}
