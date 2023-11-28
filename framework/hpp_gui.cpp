@@ -114,6 +114,7 @@ HPPGui::HPPGui(HPPVulkanSample &sample_, const vkb::Window &window, const vkb::s
 	io.KeyMap[ImGuiKey_UpArrow]    = static_cast<int>(KeyCode::Up);
 	io.KeyMap[ImGuiKey_DownArrow]  = static_cast<int>(KeyCode::Down);
 	io.KeyMap[ImGuiKey_Tab]        = static_cast<int>(KeyCode::Tab);
+	io.KeyMap[ImGuiKey_Escape]     = static_cast<int>(KeyCode::Backspace);
 
 	// Default font
 	fonts.emplace_back(default_font, font_size * dpi_factor);
@@ -811,46 +812,6 @@ void HPPGui::show_debug_window(const DebugInfo &debug_info, const ImVec2 &positi
 	ImGui::Columns(1);
 	ImGui::EndChild();
 
-	static Timer       timer;
-	static const char *message;
-
-	if (sample.has_scene())
-	{
-		if (ImGui::Button("Save Debug Graphs"))
-		{
-			if (vkb::common::graphs::generate_all(sample.get_render_context(), sample.get_scene()))
-			{
-				message = "Graphs Saved!";
-			}
-			else
-			{
-				message = "Error outputting graphs!";
-			}
-
-			if (timer.is_running())
-			{
-				timer.lap();
-			}
-			else
-			{
-				timer.start();
-			}
-		}
-	}
-
-	if (timer.is_running())
-	{
-		if (timer.elapsed() > 2.0)
-		{
-			timer.stop();
-		}
-		else
-		{
-			ImGui::SameLine();
-			ImGui::Text("%s", message);
-		}
-	}
-
 	ImGui::PopFont();
 	ImGui::End();
 }
@@ -1104,6 +1065,15 @@ bool HPPDrawer::checkbox(const std::string &caption, int32_t *value)
 	return res;
 }
 
+bool HPPDrawer::radio_button(const char *caption, int32_t *selectedOption, const int32_t elementOption)
+{
+	bool res = ImGui::RadioButton(caption, selectedOption, elementOption);
+	if (res)
+		dirty = true;
+
+	return res;
+}
+
 bool HPPDrawer::input_float(const std::string &caption, float *value, float step, uint32_t precision)
 {
 	bool res = ImGui::InputFloat(caption.c_str(), value, step, step * 10.0f, precision);
@@ -1171,6 +1141,30 @@ void HPPDrawer::text(const char *formatstr, ...)
 	va_start(args, formatstr);
 	ImGui::TextV(formatstr, args);
 	va_end(args);
+}
+
+template <>
+bool HPPDrawer::color_op_impl<HPPDrawer::ColorOp::Edit, 3>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorEdit3(caption, colors, flags);
+}
+
+template <>
+bool HPPDrawer::color_op_impl<HPPDrawer::ColorOp::Edit, 4>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorEdit4(caption, colors, flags);
+}
+
+template <>
+bool HPPDrawer::color_op_impl<HPPDrawer::ColorOp::Pick, 3>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorPicker3(caption, colors, flags);
+}
+
+template <>
+bool HPPDrawer::color_op_impl<HPPDrawer::ColorOp::Pick, 4>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorPicker4(caption, colors, flags);
 }
 
 }        // namespace vkb

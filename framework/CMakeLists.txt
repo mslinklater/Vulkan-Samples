@@ -48,6 +48,7 @@ set(FRAMEWORK_FILES
     hpp_resource_cache.h
     hpp_resource_record.h
     hpp_resource_replay.h
+    hpp_semaphore_pool.h
     hpp_vulkan_sample.h
     # Source Files
     gui.cpp
@@ -74,6 +75,7 @@ set(FRAMEWORK_FILES
 
 set(COMMON_FILES
     # Header Files
+    common/ktx_common.h
     common/vk_common.h
     common/vk_initializers.h
     common/glm_common.h 
@@ -91,6 +93,7 @@ set(COMMON_FILES
     common/hpp_vk_common.h
     # Source Files
     common/error.cpp
+    common/ktx_common.cpp
     common/vk_common.cpp
     common/utils.cpp
     common/strings.cpp)
@@ -131,6 +134,7 @@ set(RENDERING_FILES
     rendering/render_target.cpp
     rendering/subpass.cpp
     rendering/hpp_render_context.cpp
+    rendering/hpp_render_frame.cpp
     rendering/hpp_render_target.cpp)
 
 set(RENDERING_SUBPASSES_FILES
@@ -192,7 +196,8 @@ set(SCENE_GRAPH_COMPONENT_FILES
     scene_graph/components/transform.cpp
     scene_graph/components/image/astc.cpp
     scene_graph/components/image/ktx.cpp
-    scene_graph/components/image/stb.cpp)
+    scene_graph/components/image/stb.cpp
+    scene_graph/components/hpp_image.cpp)
 
 set(SCENE_GRAPH_SCRIPTS_FILES
     # Header Files
@@ -304,6 +309,7 @@ set(CORE_FILES
     core/hpp_buffer.cpp
     core/hpp_command_buffer.cpp
     core/hpp_command_pool.cpp
+    core/hpp_debug.cpp
     core/hpp_device.cpp
     core/hpp_image.cpp
     core/hpp_image_view.cpp
@@ -311,8 +317,8 @@ set(CORE_FILES
     core/hpp_physical_device.cpp
     core/hpp_pipeline_layout.cpp
     core/hpp_queue.cpp
+    core/hpp_sampler.cpp
     core/hpp_swapchain.cpp
-    core/hpp_vulkan_resource.cpp
 )
 
 set(PLATFORM_FILES
@@ -354,19 +360,6 @@ set(PARSER_FILES
     platform/parsers/CLI11.cpp
     platform/parsers/help_formatter.cpp
 )
-
-set(GRAPHING_FILES
-    # Header Files
-    graphing/graph.h
-    graphing/graph_node.h
-    graphing/scene_graph.h
-    graphing/framework_graph.h
-
-    # Source Files
-    graphing/graph.cpp
-    graphing/graph_node.cpp
-    graphing/scene_graph.cpp
-    graphing/framework_graph.cpp)
 
 set(ANDROID_FILES
     # Header Files
@@ -413,7 +406,6 @@ source_group("scene_graph\\" FILES ${SCENE_GRAPH_FILES})
 source_group("scene_graph\\components\\" FILES ${SCENE_GRAPH_COMPONENT_FILES})
 source_group("scene_graph\\scripts\\" FILES ${SCENE_GRAPH_SCRIPTS_FILES})
 source_group("stats\\" FILES ${STATS_FILES})
-source_group("graphing\\" FILES ${GRAPHING_FILES})
 
 set(PROJECT_FILES
     ${PLATFORM_FILES}
@@ -427,8 +419,7 @@ set(PROJECT_FILES
     ${SCENE_GRAPH_FILES}
     ${SCENE_GRAPH_COMPONENT_FILES}
     ${SCENE_GRAPH_SCRIPTS_FILES}
-    ${STATS_FILES}
-    ${GRAPHING_FILES})
+    ${STATS_FILES})
 
 # No need for explicit casts from vk::HandleType to VkHandleType on ANDROID
 if(ANDROID)
@@ -482,8 +473,19 @@ if(${VKB_VALIDATION_LAYERS_GPU_ASSISTED})
     if (APPLE)
         message(WARNING "GPU assisted validation layers are not currently available on macOS.")
     else()
+        target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS)
         target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS_GPU_ASSISTED)
     endif()
+endif()
+
+if(${VKB_VALIDATION_LAYERS_BEST_PRACTICES})
+    target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS_BEST_PRACTICES)
+endif()
+
+if(${VKB_VALIDATION_LAYERS_SYNCHRONIZATION})
+    target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC VKB_VALIDATION_LAYERS_SYNCHRONIZATION)
 endif()
 
 if(${VKB_VULKAN_DEBUG})
@@ -508,6 +510,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC $<TARGET_PROPERTY:plugins,INCL
 
 # Link third party libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    vkb__core
     volk
     ktx
     stb

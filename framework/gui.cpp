@@ -148,6 +148,7 @@ Gui::Gui(VulkanSample &sample_, const Window &window, const Stats *stats,
 	io.KeyMap[ImGuiKey_UpArrow]    = static_cast<int>(KeyCode::Up);
 	io.KeyMap[ImGuiKey_DownArrow]  = static_cast<int>(KeyCode::Down);
 	io.KeyMap[ImGuiKey_Tab]        = static_cast<int>(KeyCode::Tab);
+	io.KeyMap[ImGuiKey_Escape]     = static_cast<int>(KeyCode::Backspace);
 
 	// Default font
 	fonts.emplace_back(default_font, font_size * dpi_factor);
@@ -883,46 +884,6 @@ void Gui::show_debug_window(DebugInfo &debug_info, const ImVec2 &position)
 	ImGui::Columns(1);
 	ImGui::EndChild();
 
-	static Timer       timer;
-	static const char *message;
-
-	if (sample.has_scene())
-	{
-		if (ImGui::Button("Save Debug Graphs"))
-		{
-			if (graphs::generate_all(sample.get_render_context(), sample.get_scene()))
-			{
-				message = "Graphs Saved!";
-			}
-			else
-			{
-				message = "Error outputting graphs!";
-			}
-
-			if (timer.is_running())
-			{
-				timer.lap();
-			}
-			else
-			{
-				timer.start();
-			}
-		}
-	}
-
-	if (timer.is_running())
-	{
-		if (timer.elapsed() > 2.0)
-		{
-			timer.stop();
-		}
-		else
-		{
-			ImGui::SameLine();
-			ImGui::Text("%s", message);
-		}
-	}
-
 	ImGui::PopFont();
 	ImGui::End();
 }
@@ -1176,6 +1137,15 @@ bool Drawer::checkbox(const char *caption, int32_t *value)
 	return res;
 }
 
+bool Drawer::radio_button(const char *caption, int32_t *selectedOption, const int32_t elementOption)
+{
+	bool res = ImGui::RadioButton(caption, selectedOption, elementOption);
+	if (res)
+		dirty = true;
+
+	return res;
+}
+
 bool Drawer::input_float(const char *caption, float *value, float step, uint32_t precision)
 {
 	bool res = ImGui::InputFloat(caption, value, step, step * 10.0f, precision);
@@ -1243,6 +1213,30 @@ void Drawer::text(const char *formatstr, ...)
 	va_start(args, formatstr);
 	ImGui::TextV(formatstr, args);
 	va_end(args);
+}
+
+template <>
+bool Drawer::color_op_impl<Drawer::ColorOp::Edit, 3>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorEdit3(caption, colors, flags);
+}
+
+template <>
+bool Drawer::color_op_impl<Drawer::ColorOp::Edit, 4>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorEdit4(caption, colors, flags);
+}
+
+template <>
+bool Drawer::color_op_impl<Drawer::ColorOp::Pick, 3>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorPicker3(caption, colors, flags);
+}
+
+template <>
+bool Drawer::color_op_impl<Drawer::ColorOp::Pick, 4>(const char *caption, float *colors, ImGuiColorEditFlags flags)
+{
+	return ImGui::ColorPicker4(caption, colors, flags);
 }
 
 }        // namespace vkb
